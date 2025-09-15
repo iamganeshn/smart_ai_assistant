@@ -18,7 +18,11 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 # Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
 gem "solid_cache"
 gem "solid_queue"
+gem "mission_control-jobs" # provides a Rails-based frontend to Active Job adapters
 gem "solid_cable"
+
+# Propshaft is an asset pipeline library for Rails
+gem "propshaft" # UI was not working after adding mission_control, so it suggested this one.
 
 # PostgreSQL vector similarity search
 gem "pgvector", "~> 0.3.0"
@@ -28,6 +32,8 @@ gem "ruby-openai", "~> 8.3.0"
 
 # Token-aware text splitter (for chunking documents)
 gem "tiktoken_ruby", "~> 0.0.12"
+
+gem "neighbor", "~> 0.6.0"
 
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
@@ -48,6 +54,7 @@ group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
 
+  gem "dotenv-rails"
   # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
   gem "brakeman", require: false
 

@@ -10,9 +10,27 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_11_171125) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_13_063514) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
 
+  create_table "document_chunks", force: :cascade do |t|
+    t.bigint "document_id", null: false
+    t.text "text", null: false
+    t.integer "order", null: false
+    t.vector "embedding_openai", limit: 1536
+    t.vector "embedding_ollama", limit: 768
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["document_id"], name: "index_document_chunks_on_document_id"
+  end
+
+  create_table "documents", force: :cascade do |t|
+    t.text "text", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  add_foreign_key "document_chunks", "documents"
 end
