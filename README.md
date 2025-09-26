@@ -8,20 +8,20 @@ Built with **Rails 8** and **Ruby 3.3.8**, supporting embeddings, document chunk
 
 ## Features
 
-* Automatic **document chunking** with token-aware splitting (`tiktoken_ruby`)
-* **PostgreSQL vector similarity search** (`pgvector`) for fast retrieval
-* **Embeddings and chat completions** via OpenAI or Ollama
-* **Background jobs** using Solid Queue, monitored with `mission_control-jobs`
-* Easy switch between Ollama and OpenAI models
+- Automatic **document chunking** with token-aware splitting (`tiktoken_ruby`)
+- **PostgreSQL vector similarity search** (`pgvector`) for fast retrieval
+- **Embeddings and chat completions** via OpenAI or Ollama
+- **Background jobs** using Solid Queue, monitored with `mission_control-jobs`
+- Easy switch between Ollama and OpenAI models
 
 ---
 
 ## Requirements
 
-* Ruby 3.3.8
-* Rails 8
-* PostgreSQL >= 14
-* Ollama (for local embeddings/chat testing)
+- Ruby 3.3.8
+- Rails 8
+- PostgreSQL >= 14
+- Ollama (for local embeddings/chat testing)
 
 > **RAG (Retrieval-Augmented Generation):** Combines a vector search over documents with a generative LLM to produce context-aware answers.
 
@@ -61,8 +61,8 @@ OLLAMA_URI_BASE=http://localhost:11434
 
 ### 4. Set up PostgreSQL + pgvector
 
-* Ensure **PostgreSQL (>=14)** is installed and running.
-* Install the **pgvector** extension and enable it in your database:
+- Ensure **PostgreSQL (>=14)** is installed and running.
+- Install the **pgvector** extension and enable it in your database:
 
 ```bash
 brew install pgvector
@@ -200,7 +200,7 @@ Create a document and let background jobs handle chunking & embedding:
 
 ```ruby
 # rails console
-doc = Document.create!(title: "Climate Change", text: File.read("sample_long_text.txt"))
+doc = Document.create!(text: File.read("sample_long_text.txt"))
 ```
 
 Retrieve embeddings and search for similar chunks:
@@ -224,9 +224,9 @@ Streaming responses are supported via **SSE**, so users see partial answers as t
 
 ## Notes
 
-* All chunking/embedding happens **asynchronously** after document creation.
-* You can switch between Ollama and OpenAI models by updating `EmbeddingsConfig`.
-* SSE streaming is used for chat responses; **Action Cable** is not required for now.
-* Tested with **Ollama 0.11.10** and **PostgreSQL 14**.
+- All chunking/embedding happens **asynchronously** after document creation.
+- You can switch between Ollama and OpenAI models by updating `EmbeddingsConfig`.
+- SSE streaming is used for chat responses; **Action Cable** is not required for now.
+- Tested with **Ollama 0.11.10** and **PostgreSQL 14**.
 
 ---

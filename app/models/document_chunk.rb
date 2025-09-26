@@ -15,7 +15,14 @@ class DocumentChunk < ApplicationRecord
 
   # Generic nearest neighbors finder
   # Example: DocumentChunk.find_similar(query_embedding, 1)
-  def self.find_similar(query_embedding, limit = 3)
-    nearest_neighbors(EmbeddingsConfig.active_model[:embedding_column], query_embedding, distance: :cosine).limit(limit)
+  def self.find_similar(query_embedding, limit = 3, threshold = 0.7)
+    results = nearest_neighbors(
+      EmbeddingsConfig.active_model[:embedding_column],
+      query_embedding,
+      distance: :cosine
+    )
+    .limit(limit)
+    .select("document_chunks.*, cosine_distance(#{EmbeddingsConfig.active_model[:embedding_column]}, '[#{query_embedding.join(",")}]') AS distance")
+    results.select { |r| r.distance.to_f <= threshold }
   end
 end
