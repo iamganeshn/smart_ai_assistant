@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -29,6 +29,7 @@ import * as API from '../utils/api';
 
 const ChatScreen = (props) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -38,16 +39,22 @@ const ChatScreen = (props) => {
       timestamp: new Date(),
     },
   ]);
-  console.log('location.state: ', location.state);
-  const [alert, setAlert] = useState({
-    message: location.state?.alert?.message,
-    type: location.state?.alert?.type,
-  });
+  const [alert, setAlert] = useState({ message: '', type: '' });
 
   const [input, setInput] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (location.state?.alert) {
+      setAlert({
+        message: location.state?.alert?.message,
+        type: location.state?.alert?.type,
+      });
+      navigate(location.pathname, { replace: true }); // Clear state after showing alert
+    }
+  }, [location]);
 
   // Scroll to bottom when messages update
   useEffect(() => {
