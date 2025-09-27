@@ -12,8 +12,8 @@ import {
   Paper,
   Chip,
   Stack,
-  Divider,
 } from '@mui/material';
+
 import {
   Send as SendIcon,
   AttachFile as AttachFileIcon,
@@ -22,13 +22,15 @@ import {
   SmartToy as BotIcon,
 } from '@mui/icons-material';
 
+import * as API from '../utils/api';
+
 export function ChatScreen() {
   const [messages, setMessages] = useState([
     {
       id: '1',
       content:
         "Hello! I'm Tech9 GPT, your internal AI assistant. Ask me anything or upload documents for analysis.",
-      sender: 'ai',
+      role: 'assistant',
       timestamp: new Date(),
     },
   ]);
@@ -52,31 +54,63 @@ export function ChatScreen() {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSend = () => {
-    if (!input.trim() && attachedFiles.length === 0) return;
+  const handleSend = async () => {
+    if (!input.trim()) return;
 
     const userMessage = {
-      id: Date.now().toString(),
+      id: `msg-${(Date.now() + 1).toString()}`,
       content: input || `Uploaded ${attachedFiles.length} file(s)`,
-      sender: 'user',
+      role: 'user',
       timestamp: new Date(),
       attachedFiles,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
-    setAttachedFiles([]);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage = {
-        id: (Date.now() + 1).toString(),
-        content: "Here's the analysis based on your input and documents...",
-        sender: 'ai',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-    }, 1200);
+    // Create empty AI message for streaming
+    const aiMessage = {
+      id: `msg-${(Date.now() + 1).toString()}`,
+      content: 'Typing...',
+      role: 'assistant',
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, aiMessage]);
+
+    const response = await API.chat(userMessage.content);
+    // Stream response
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let fullContent = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+
+      const lines = chunk.split('\n');
+      console.log('Received chunk:', chunk);
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          let data = line.slice(6);
+          if (data === '[DONE]') continue;
+
+          data = JSON.parse(data);
+          console.log('Parsed data:', data['content']);
+
+          if (data['content']) {
+            fullContent += data['content'];
+
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === aiMessage.id ? { ...msg, content: fullContent } : msg
+              )
+            );
+          }
+        }
+      }
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -114,12 +148,10 @@ export function ChatScreen() {
             key={message.id}
             direction="row"
             spacing={1}
-            justifyContent={
-              message.sender === 'user' ? 'flex-end' : 'flex-start'
-            }
+            justifyContent={message.role === 'user' ? 'flex-end' : 'flex-start'}
             alignItems="flex-end"
           >
-            {message.sender === 'ai' && (
+            {message.role === 'assistant' && (
               <Avatar sx={{ bgcolor: 'primary.main' }}>
                 <BotIcon />
               </Avatar>
@@ -130,11 +162,9 @@ export function ChatScreen() {
                 maxWidth: '100%',
                 borderRadius: 2,
                 bgcolor:
-                  message.sender === 'user'
-                    ? 'primary.main'
-                    : 'background.paper',
+                  message.role === 'user' ? 'primary.main' : 'background.paper',
                 color:
-                  message.sender === 'user'
+                  message.role === 'user'
                     ? 'primary.contrastText'
                     : 'text.primary',
                 boxShadow: 3,
@@ -169,7 +199,7 @@ export function ChatScreen() {
               </CardContent>
             </Card>
 
-            {message.sender === 'user' && (
+            {message.role === 'user' && (
               <Avatar sx={{ bgcolor: 'secondary.main' }}>
                 <PersonIcon />
               </Avatar>
