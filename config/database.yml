@@ -9,7 +9,7 @@ development:
     database: smart_ai_assistant_development
   queue:
     <<: *default
-    database: smart_ai_assistant_development_queue
+    database: smart_ai_assistant_development
     migrations_paths: db/queue_migrate
 
 test:
