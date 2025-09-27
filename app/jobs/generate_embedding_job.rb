@@ -13,7 +13,8 @@ class GenerateEmbeddingJob < ApplicationJob
       }
     )
     embedding = response.dig("data", 0, "embedding")
-    chunk.update_column(EmbeddingsConfig.active_model[:embedding_column], embedding)
+    chunk.update_columns(EmbeddingsConfig.active_model[:embedding_column] => embedding, status: :completed)
+    chunk.document.update_column(:status, :completed) if chunk.document.document_chunks.completed.count == chunk.document.document_chunks.count
   end
 
   def embedding_client

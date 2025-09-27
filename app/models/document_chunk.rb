@@ -1,4 +1,6 @@
 class DocumentChunk < ApplicationRecord
+  enum :status, { uploaded: 0, embedding: 1, completed: 2, failed: 3 }, default: :uploaded
+
   belongs_to :document
 
   validates :text, presence: true

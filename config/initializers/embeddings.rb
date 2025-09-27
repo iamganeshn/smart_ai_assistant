@@ -5,8 +5,8 @@ module EmbeddingsConfig
       embedding_model: "text-embedding-3-small",
       chat_model: "gpt-4o-mini",
       tokenizer: "cl100k_base",
-      chunk_size: 500,
-      overlap_size: 50,
+      chunk_size: 1000,
+      overlap_size: 80,
       embedding_column: :embedding_openai
     },
     ollama: {
@@ -21,7 +21,7 @@ module EmbeddingsConfig
 
   # Set default model to use
   def self.active_model
-    MODELS[:ollama]  # change to :openai to switch
+    MODELS[:openai]  # change to :openai to switch
   end
 
   def self.active_model_key
