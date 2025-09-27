@@ -439,5 +439,8 @@ DEPENDENCIES
   tiktoken_ruby (~> 0.0.12)
   tzinfo-data
 
+RUBY VERSION
+   ruby 3.3.8p144
+
 BUNDLED WITH
    2.5.22
