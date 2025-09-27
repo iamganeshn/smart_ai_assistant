@@ -26,7 +26,6 @@ class ChatCompletionService
   def call(&stream_writer)
     embedding = fetch_embedding
     context = build_context_from_embedding(embedding)
-    context = ""
     stream_ai_response(context, &stream_writer)
     continue_with_tool_result(context, &stream_writer) if @tool_result
   end

@@ -14,7 +14,6 @@ class DocumentsController < ApplicationController
   end
 
   def create
-    debugger
     return render json: { error: "files are required" }, status: :unprocessable_entity if document_params[:files].blank?
 
     created_documents = []
