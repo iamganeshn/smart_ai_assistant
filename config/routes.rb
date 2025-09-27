@@ -9,4 +9,5 @@ Rails.application.routes.draw do
   # root "posts#index"
   post "chat", to: "chat#completion"
   resources :documents, only: [:create, :index, :show]
+  post '/google/callback', to: 'sessions#google_callback'
 end

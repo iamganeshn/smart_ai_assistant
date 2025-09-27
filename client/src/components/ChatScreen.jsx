@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -14,6 +15,8 @@ import {
   Stack,
 } from '@mui/material';
 
+import Notification from '../utils/Notification';
+
 import {
   Send as SendIcon,
   AttachFile as AttachFileIcon,
@@ -24,7 +27,8 @@ import {
 
 import * as API from '../utils/api';
 
-export function ChatScreen() {
+const ChatScreen = (props) => {
+  const location = useLocation();
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -34,6 +38,12 @@ export function ChatScreen() {
       timestamp: new Date(),
     },
   ]);
+  console.log('location.state: ', location.state);
+  const [alert, setAlert] = useState({
+    message: location.state?.alert?.message,
+    type: location.state?.alert?.type,
+  });
+
   const [input, setInput] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const fileInputRef = useRef(null);
@@ -131,6 +141,7 @@ export function ChatScreen() {
         pt: 5,
       }}
     >
+      <Notification alert={alert} setAlert={setAlert} />
       {/* Messages */}
       <Box
         sx={{
@@ -282,4 +293,6 @@ export function ChatScreen() {
       )}
     </Box>
   );
-}
+};
+
+export default ChatScreen;

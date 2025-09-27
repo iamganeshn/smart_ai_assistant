@@ -24,6 +24,8 @@ gem "solid_cache"
 gem "solid_queue"
 gem "mission_control-jobs" # provides a Rails-based frontend to Active Job adapters
 gem "solid_cable"
+gem "rest-client", "~> 2.1"
+gem "jwt", "~> 3.1.2"
 
 # Propshaft is an asset pipeline library for Rails
 gem "propshaft" # UI was not working after adding mission_control, so it suggested this one.

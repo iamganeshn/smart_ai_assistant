@@ -1,19 +1,26 @@
 import './App.css';
 import {
-  BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
+  useNavigate,
+  useLocation,
 } from 'react-router-dom';
+import { Backdrop, CircularProgress } from '@mui/material';
 
 import { useState } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { LoginScreen } from './components/LoginScreen';
-import { ChatScreen } from './components/ChatScreen';
+import ChatScreen from './components/ChatScreen';
 import { DocumentUploadScreen } from './components/DocumentUploadScreen';
 import { EmployeeProjectScreen } from './components/EmployeeProjectScreen';
+import Notification from './utils/Notification';
+
 import AppLayout from './AppLayout';
+
+import { useGoogleLoginHook } from './hooks/useGoogleLoginHook';
+import { useAuth } from './hooks/useAuth';
 
 const theme = createTheme({
   palette: {
@@ -56,34 +63,93 @@ const theme = createTheme({
 });
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const location = useLocation();
+  const { user, logout } = useAuth();
+  const [openBackdrop, setOpenBackdrop] = useState(false);
+  const [alert, setAlert] = useState({
+    message: location.state?.alert?.message,
+    type: location.state?.alert?.type,
+  });
+
+  const navigate = useNavigate();
+
+  const handleBackdropClose = () => {
+    setOpenBackdrop(false);
+  };
+  const handleBackdropOpen = () => {
+    setOpenBackdrop(true);
+  };
+  const { googleLogin } = useGoogleLoginHook(
+    `${window.location.origin}`,
+    handleBackdropClose,
+    handleBackdropOpen,
+    (userInfo) => {
+      navigate('/', {
+        state: {
+          alert: {
+            message: 'Login successful — welcome back!.',
+            type: 'success',
+          },
+        },
+      });
+    },
+    (error) => {
+      console.error('Login failed:', error);
+      setAlert({ message: error, type: 'error' });
+    }
+  );
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        {!isLoggedIn ? (
-          <LoginScreen onLogin={() => setIsLoggedIn(true)} />
-        ) : (
-          <AppLayout>
-            <Routes>
-              <Route
-                path="/chat"
-                element={
-                  <ChatScreen
-                    // Todo: change isAdmin based on actual user role
-                    isAdmin={true}
-                    onLogout={() => setIsLoggedIn(false)}
-                  />
-                }
-              />
-              <Route path="/documents" element={<DocumentUploadScreen />} />
-              <Route path="/employees" element={<EmployeeProjectScreen />} />
-              <Route path="*" element={<Navigate to="/chat" />} />
-            </Routes>
-          </AppLayout>
-        )}
-      </Router>
+      <Notification alert={alert} setAlert={setAlert} />
+
+      {!user ? (
+        <LoginScreen
+          onLogin={() => {
+            handleBackdropOpen();
+            googleLogin();
+          }}
+        />
+      ) : (
+        <AppLayout>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <ChatScreen
+                  // Todo: change isAdmin based on actual user role
+                  isAdmin={true}
+                  onLogout={() => logout()}
+                />
+              }
+            />
+            <Route
+              path="/sign_in"
+              element={
+                <LoginScreen
+                  onLogin={() => {
+                    handleBackdropOpen();
+                    googleLogin();
+                  }}
+                />
+              }
+            />
+            <Route path="/documents" element={<DocumentUploadScreen />} />
+            <Route path="/employees" element={<EmployeeProjectScreen />} />
+            <Route path="*" element={<Navigate to="/chat" />} />
+          </Routes>
+        </AppLayout>
+      )}
+      <Backdrop
+        sx={(theme) => ({
+          color: '#fff',
+          zIndex: theme.zIndex.drawer + 1,
+        })}
+        open={openBackdrop}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </ThemeProvider>
   );
 }

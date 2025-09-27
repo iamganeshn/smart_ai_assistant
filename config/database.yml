@@ -7,10 +7,6 @@ development:
   primary:
     <<: *default
     database: smart_ai_assistant_development
-  queue:
-    <<: *default
-    database: smart_ai_assistant_development
-    migrations_paths: db/queue_migrate
 
 test:
   <<: *default
@@ -24,10 +20,6 @@ production:
     <<: *primary_production
     url: <%= ENV['DATABASE_URL'] %>
     migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_production
-    url: <%= ENV['DATABASE_URL'] %>
-    migrations_paths: db/queue_migrate
   cable:
     <<: *primary_production
     url: <%= ENV['DATABASE_URL'] %>

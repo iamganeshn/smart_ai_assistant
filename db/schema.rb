@@ -75,10 +75,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_27_134344) do
   create_table "messages", force: :cascade do |t|
     t.text "content", null: false
     t.string "role", null: false
-    t.bigint "conversations_id", null: false
+    t.bigint "conversation_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["conversations_id"], name: "index_messages_on_conversations_id"
+    t.index ["conversation_id"], name: "index_messages_on_conversation_id"
   end
 
   create_table "solid_queue_blocked_executions", force: :cascade do |t|
@@ -218,7 +218,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_27_134344) do
   add_foreign_key "conversations", "users"
   add_foreign_key "document_chunks", "documents"
   add_foreign_key "documents", "conversations"
-  add_foreign_key "messages", "conversations", column: "conversations_id"
+  add_foreign_key "messages", "conversations"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_failed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
