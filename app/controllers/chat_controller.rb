@@ -31,6 +31,7 @@ class ChatController < ApplicationController
   end
 
   def current_user
+    # Todo: Replace with actual authentication logic
     User.last
   end
 end

@@ -52,6 +52,7 @@ class ChatCompletionService
         model: embedding_config[:chat_model],
         instructions: build_instructions(context),
         input: @messages,
+        # Todo: replace with actual tools later
         # tools: [create_contact_tool],
         store: false,
         stream: proc do |chunk, _event|
@@ -82,21 +83,14 @@ class ChatCompletionService
     when "response.completed"
       Rails.logger.info("Response usage: #{chunk.dig('response', 'usage')}")
     when "response.output_item.done"
+      # Todo: handle tool results properly later
       if chunk.dig("item", "name") == "create_contact"
         arguments = JSON.parse(chunk["item"]["arguments"])
-        create_contact(arguments)
-        @messages << { content: tool_success_message.to_json }
+        # create_contact(arguments)
+        @messages << { content: { status: "success", message: "Contact created/updated successfully." }.to_json }
         @tool_result = true
       end
     end
-  end
-
-  def create_contact(args)
-    # ContactService.new.create_or_update(args)
-  end
-
-  def tool_success_message
-    { status: "success", message: "Contact created/updated successfully." }
   end
 
   def build_instructions(context)
@@ -110,7 +104,7 @@ class ChatCompletionService
       #{context}
     PROMPT
   end
-
+  # Todo: implement actual tool actions later
   def create_contact_tool
     {
       "type" => "function",
@@ -147,6 +141,7 @@ class ChatCompletionService
 
   private
 
+  # Todo: Make it as global method later
   def openai_client
     case EmbeddingsConfig.active_model_key
     when :openai
