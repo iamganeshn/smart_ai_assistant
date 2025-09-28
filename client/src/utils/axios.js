@@ -28,16 +28,4 @@ instance.interceptors.request.use(
   }
 );
 
-instance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.log('Error in axios :', error.status);
-    if (error.status == 401 && window.location.pathname !== '/sign_in') {
-      localStorage.removeItem('tech9gpt_user');
-      window.location.href = '/sign_in';
-    }
-    return Promise.reject(error);
-  }
-);
-
 export default instance;

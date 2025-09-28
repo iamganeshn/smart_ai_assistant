@@ -13,7 +13,7 @@ class ChatCompletionService
     @query = query
 
     if @conversation.title == "New Conversation"
-      truncated_title = @query.length > 16 ? @query[0..16] + "..." : @query
+      truncated_title = @query.length > 40 ? @query[0..40] + "..." : @query
       @conversation.title = truncated_title
       @conversation.save!
     end

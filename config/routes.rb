@@ -11,4 +11,6 @@ Rails.application.routes.draw do
   resources :documents, only: [ :create, :index, :show, :destroy ]
   post "/google/callback", to: "sessions#google_callback"
   resources :conversations, only: [ :index, :show, :create, :update, :destroy ]
+  post '/slack/events', to: 'slack/events#create'
+
 end
