@@ -8,6 +8,8 @@ class Slack::EventsController < ApplicationController
       render json: { challenge: payload['challenge'] } and return
     end
 
+    head :ok
+
     event = payload['event']
     return unless event && event['type'] == 'message' && event['channel'].start_with?('D')
 
@@ -26,7 +28,6 @@ class Slack::EventsController < ApplicationController
       send_message(channel_id, "Access denied. Only @tech9.com users can interact with me.")
     end
 
-    head :ok
   end
 
   private
