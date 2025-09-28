@@ -55,7 +55,7 @@ class ChatCompletionService
 
   def build_context_from_embedding(embedding)
     DocumentChunk.joins(:document)
-      .where(documents: { conversation_id: [@conversation.id, nil] })
+      .where(documents: { conversation_id: [ @conversation.id, nil ] })
       .find_similar(embedding)
       .map(&:text)
       .join("\n\n")

@@ -1,6 +1,5 @@
 # app/controllers/chat_controller.rb
 class ChatController < ApplicationController
-
   include ActionController::Live
   def completion
     return if performed?

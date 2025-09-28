@@ -46,7 +46,7 @@ class SlackChatService
       parameters: {
         model: embedding_config[:chat_model],
         instructions: build_instructions(context),
-        input: [{ role: "user", content: @query }],
+        input: [ { role: "user", content: @query } ],
         store: false
       }
     )

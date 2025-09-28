@@ -8,11 +8,11 @@ json.data do
       json.role         message.role
     end
   else
-    json.messages [{
-      id: 'welcome',
+    json.messages [ {
+      id: "welcome",
       content: "Hello! I'm Tech9 GPT, your internal AI assistant. Ask me anything or upload documents for analysis.",
-      role: 'assistant',
-    }]
+      role: "assistant"
+    } ]
   end
 
   json.documents(@conversation.documents) do |document|

@@ -26,7 +26,7 @@ gem "solid_cable"
 gem "rest-client", "~> 2.1"
 gem "jwt", "~> 3.1.2"
 gem "jbuilder", "~> 2.14.1"
-gem 'slack-ruby-client'
+gem "slack-ruby-client"
 
 # Propshaft is an asset pipeline library for Rails
 gem "propshaft" # UI was not working after adding mission_control, so it suggested this one.

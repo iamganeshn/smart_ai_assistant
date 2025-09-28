@@ -2,7 +2,7 @@
 
 
 class SessionsController < ApplicationController
-  skip_before_action :authenticate_request, only: [:google_callback]
+  skip_before_action :authenticate_request, only: [ :google_callback ]
 
   def google_callback
     service = GoogleAuthService.new(params[:code], params[:redirect_uri])
@@ -23,7 +23,7 @@ class SessionsController < ApplicationController
       render json: {
         message: "User was successfully logged in through Google",
         user: { id: @user.id, name: @user.full_name, email: @user.email,
-                avatar_image_url: @user.avatar_image.url, role: @user.role },
+                avatar_image_url: @user.avatar_image.url, role: @user.role }
       }, status: :created
     else
       render json: {

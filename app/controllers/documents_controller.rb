@@ -74,7 +74,7 @@ class DocumentsController < ApplicationController
       is_global: document.conversation_id.nil?,
       uploader: document.user ? {
         id: document.user.id,
-        name: [document.user.first_name, document.user.last_name].compact.join(' '),
+        name: [ document.user.first_name, document.user.last_name ].compact.join(" "),
         email: document.user.email
       } : nil
     )
