@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
@@ -324,63 +326,128 @@ const ChatScreen = (props) => {
           gap: 1.5,
         }}
       >
-        {messages.map((message) => (
-          <Stack
-            key={message.id}
-            direction="row"
-            spacing={1}
-            justifyContent={message.role === 'user' ? 'flex-end' : 'flex-start'}
-            alignItems="flex-end"
-          >
-            {message.role === 'assistant' && (
-              <Avatar sx={{ bgcolor: 'primary.main' }}>
-                <BotIcon />
-              </Avatar>
-            )}
-
-            <Card
-              sx={{
-                maxWidth: '100%',
-                borderRadius: 2,
-                bgcolor:
-                  message.role === 'user' ? 'primary.main' : 'background.paper',
-                color:
-                  message.role === 'user'
-                    ? 'primary.contrastText'
-                    : 'text.primary',
-                boxShadow: 3,
-              }}
+        {messages.map((message) => {
+          const isUser = message.role === 'user';
+          const isAssistant = message.role === 'assistant';
+          return (
+            <Stack
+              key={message.id}
+              direction="row"
+              spacing={1}
+              justifyContent={isUser ? 'flex-end' : 'flex-start'}
+              alignItems="flex-start"
             >
-              <CardContent sx={{ p: 2 }}>
-                <Typography variant="body1" sx={{ wordBreak: 'break-word' }}>
-                  {message.content}
-                </Typography>
+              {/* Assistant avatar on left */}
+              {isAssistant && (
+                <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
+                  <BotIcon fontSize="small" />
+                </Avatar>
+              )}
 
-                {message.attachedFiles?.length > 0 && (
-                  <Stack direction="row" spacing={1} mt={1} flexWrap="wrap">
-                    {message.attachedFiles.map((file, idx) => (
-                      <Chip
-                        key={idx}
-                        size="small"
-                        icon={<FileTextIcon />}
-                        label={file.name}
-                        sx={{ bgcolor: 'grey.200' }}
-                      />
-                    ))}
-                  </Stack>
-                )}
-              </CardContent>
-            </Card>
+              <Card
+                sx={{
+                  maxWidth: '80%',
+                  borderRadius: 2,
+                  bgcolor: isUser ? 'primary.main' : 'background.paper',
+                  color: isUser ? 'primary.contrastText' : 'text.primary',
+                  boxShadow: 3,
+                  alignSelf: isUser ? 'flex-end' : 'flex-start',
+                }}
+              >
+                <CardContent sx={{ p: 2 }}>
+                  {isAssistant ? (
+                    <Box
+                      sx={{
+                        '& pre': {
+                          bgcolor: 'grey.900',
+                          color: 'grey.100',
+                          p: 1.5,
+                          borderRadius: 1,
+                          overflowX: 'auto',
+                          fontSize: '0.8rem',
+                        },
+                        '& code': {
+                          bgcolor: 'grey.100',
+                          color: 'grey.900',
+                          px: 0.5,
+                          py: 0.2,
+                          borderRadius: 0.5,
+                          fontSize: '0.85rem',
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                        },
+                        '& pre code': {
+                          bgcolor: 'transparent',
+                          color: 'inherit',
+                          p: 0,
+                        },
+                        '& a': {
+                          color: 'primary.main',
+                          textDecoration: 'none',
+                        },
+                        '& a:hover': {
+                          textDecoration: 'underline',
+                        },
+                        '& ul, & ol': {
+                          pl: 3,
+                          my: 1,
+                        },
+                        '& blockquote': {
+                          borderLeft: '4px solid',
+                          borderColor: 'grey.300',
+                          pl: 2,
+                          ml: 0,
+                          my: 1,
+                          color: 'grey.700',
+                          fontStyle: 'italic',
+                          bgcolor: 'grey.50',
+                          borderRadius: 1,
+                          py: 0.5,
+                        },
+                        'wordBreak': 'break-word',
+                        'textAlign': 'left',
+                      }}
+                    >
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                      </ReactMarkdown>
+                    </Box>
+                  ) : (
+                    <Typography
+                      variant="body1"
+                      sx={{ wordBreak: 'break-word' }}
+                    >
+                      {message.content}
+                    </Typography>
+                  )}
 
-            {message.role === 'user' && (
-              <Avatar
-                alt={user.name}
-                src={user.avatar_image_url}
-                sx={{ width: 30, height: 30 }}
-              />
-            )}
-          </Stack>
-        ))}
+                  {message.attachedFiles?.length > 0 && (
+                    <Stack direction="row" spacing={1} mt={1} flexWrap="wrap">
+                      {message.attachedFiles.map((file, idx) => (
+                        <Chip
+                          key={idx}
+                          size="small"
+                          icon={<FileTextIcon />}
+                          label={file.name}
+                          sx={{ bgcolor: 'grey.200' }}
+                        />
+                      ))}
+                    </Stack>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* User avatar on right */}
+              {isUser && (
+                <Avatar
+                  alt={user.name}
+                  src={user.avatar_image_url}
+                  sx={{ width: 30, height: 30 }}
+                />
+              )}
+            </Stack>
+          );
+        })}
         <div ref={messagesEndRef} />
       </Box>
 
