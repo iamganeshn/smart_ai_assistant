@@ -33,9 +33,4 @@ class ConversationsController < ApplicationController
   def conversation_params
     params.require(:conversation).permit(:title)
   end
-
-  def current_user
-    # Todo: Placeholder for current user method, replace with actual authentication logic
-    User.first
-  end
 end

@@ -119,23 +119,11 @@ export default function App() {
               <Route path="/" element={<Navigate to="/chat" />} />
               <Route
                 path="/chat"
-                element={
-                  <ChatScreen
-                    // Todo: change isAdmin based on actual user role
-                    isAdmin={true}
-                    onLogout={() => logout()}
-                  />
-                }
+                element={<ChatScreen onLogout={() => logout()} />}
               />
               <Route
                 path="/chat/:conversationId"
-                element={
-                  <ChatScreen
-                    // Todo: change isAdmin based on actual user role
-                    isAdmin={true}
-                    onLogout={() => logout()}
-                  />
-                }
+                element={<ChatScreen onLogout={() => logout()} />}
               />
               <Route
                 path="/sign_in"
