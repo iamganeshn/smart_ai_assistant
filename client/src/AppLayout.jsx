@@ -20,6 +20,8 @@ import {
   DialogContent,
   DialogActions,
   Stack,
+  Avatar,
+  Tooltip,
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -29,12 +31,13 @@ import ConversationEditModal from './components/ConversationEditModal';
 import { deleteConversation } from './utils/api';
 import { useConversationContext } from './contexts/ConversationContext';
 import { useAuth } from './hooks/useAuth';
+import UserMenuItems from './components/UserMenuItems';
 
 const drawerWidth = 300;
 
 export default function AppLayout({ children }) {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const {
     conversations,
@@ -48,6 +51,7 @@ export default function AppLayout({ children }) {
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [menuConversation, setMenuConversation] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [profileAnchorEl, setProfileAnchorEl] = useState(null);
 
   const toggleDrawer = () => setDrawerOpen(!drawerOpen);
 
@@ -122,6 +126,9 @@ export default function AppLayout({ children }) {
     if (!editingConversation) setMenuConversation(null);
   };
 
+  const openProfileMenu = (e) => setProfileAnchorEl(e.currentTarget);
+  const closeProfileMenu = () => setProfileAnchorEl(null);
+
   return (
     <Box sx={{ display: 'flex' }}>
       {/* AppBar */}
@@ -183,6 +190,43 @@ export default function AppLayout({ children }) {
               {/* <Button color="inherit" onClick={() => navigate('/employees')}>
                 Team
               </Button> */}
+            </>
+          )}
+
+          {/* Profile / User Menu */}
+          {user && (
+            <>
+              <Tooltip title={user.name || user.email}>
+                <IconButton
+                  onClick={openProfileMenu}
+                  size="small"
+                  sx={{ ml: 1 }}
+                  aria-haspopup="true"
+                  aria-controls={profileAnchorEl ? 'profile-menu' : undefined}
+                >
+                  <Avatar
+                    src={user.avatar_image_url || undefined}
+                    alt={user.name || user.email}
+                    sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 14 }}
+                  >
+                    {!(user.avatar_image_url) && (user.name || user.email || '?').charAt(0).toUpperCase()}
+                  </Avatar>
+                </IconButton>
+              </Tooltip>
+              <Menu
+                id="profile-menu"
+                anchorEl={profileAnchorEl}
+                open={Boolean(profileAnchorEl)}
+                onClose={closeProfileMenu}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              >
+                <UserMenuItems
+                  handleCloseUserMenu={closeProfileMenu}
+                  logout={logout}
+                  user={user}
+                />
+              </Menu>
             </>
           )}
         </Toolbar>
