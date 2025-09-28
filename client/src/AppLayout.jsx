@@ -36,7 +36,12 @@ export default function AppLayout({ children }) {
   const location = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { conversations, loading, updateConversationTitle, removeConversation } = useConversationContext();
+  const {
+    conversations,
+    loading,
+    updateConversationTitle,
+    removeConversation,
+  } = useConversationContext();
 
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [editingConversation, setEditingConversation] = useState(null);
@@ -96,7 +101,10 @@ export default function AppLayout({ children }) {
   };
 
   const confirmDelete = () => {
-    if (!menuConversation) { setDeleteDialogOpen(false); return; }
+    if (!menuConversation) {
+      setDeleteDialogOpen(false);
+      return;
+    }
     const id = menuConversation.id;
     deleteConversation(id)
       .then(() => {
@@ -172,9 +180,9 @@ export default function AppLayout({ children }) {
               <Button color="inherit" onClick={() => navigate('/documents')}>
                 Documents
               </Button>
-              <Button color="inherit" onClick={() => navigate('/employees')}>
+              {/* <Button color="inherit" onClick={() => navigate('/employees')}>
                 Team
-              </Button>
+              </Button> */}
             </>
           )}
         </Toolbar>
@@ -238,7 +246,7 @@ export default function AppLayout({ children }) {
                     minHeight: 48,
                     justifyContent: drawerOpen ? 'initial' : 'center',
                     px: 2.5,
-                    position: 'relative'
+                    position: 'relative',
                   }}
                 >
                   {drawerOpen && (
@@ -299,14 +307,22 @@ export default function AppLayout({ children }) {
           <MenuItem onClick={handleMenuEdit}>Edit</MenuItem>
           <MenuItem onClick={handleMenuDelete}>Delete</MenuItem>
         </Menu>
-        <Dialog open={deleteDialogOpen} onClose={cancelDelete} maxWidth="xs" fullWidth>
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={cancelDelete}
+          maxWidth="xs"
+          fullWidth
+        >
           <DialogTitle>Delete Conversation</DialogTitle>
           <DialogContent>
-            Are you sure you want to delete "{menuConversation?.title}"? This cannot be undone.
+            Are you sure you want to delete "{menuConversation?.title}"? This
+            cannot be undone.
           </DialogContent>
           <DialogActions>
             <Button onClick={cancelDelete}>Cancel</Button>
-            <Button color="error" variant="contained" onClick={confirmDelete}>Delete</Button>
+            <Button color="error" variant="contained" onClick={confirmDelete}>
+              Delete
+            </Button>
           </DialogActions>
         </Dialog>
       </Box>

@@ -1,232 +1,266 @@
+<img width="140" align="right" src="https://api.iconify.design/solar:brain-line-duotone.svg" />
+
 # Smart AI Assistant
 
-> **Note:** This project is primarily based on **RAG (Retrieval-Augmented Generation)**. It may or may not include a chatbot interface, depending on usage.
-
-Built with **Rails 8** and **Ruby 3.3.8**, supporting embeddings, document chunking, and local development with **Ollama** or **OpenAI**.
+Retrieval-Augmented Generation (RAG) chat + document knowledge base platform. Upload documents, they are chunked, embedded, and become available for contextual chat via streaming SSE responses. Built with **Rails 8 (Ruby 3.3.8)** backend and a **React 19 + Vite + MUI** frontend.
 
 ---
 
-## Features
+## ✨ Core Features
 
-- Automatic **document chunking** with token-aware splitting (`tiktoken_ruby`)
-- **PostgreSQL vector similarity search** (`pgvector`) for fast retrieval
-- **Embeddings and chat completions** via OpenAI or Ollama
-- **Background jobs** using Solid Queue, monitored with `mission_control-jobs`
-- Easy switch between Ollama and OpenAI models
+Backend (Rails):
+
+- Document upload (multi-file) with Active Storage (S3-ready) + PDF/text extraction
+- Automatic status pipeline: uploaded → extracted → embedding → completed / failed
+- Token-aware chunker (`tiktoken_ruby`) + overlap handling
+- Vector similarity search using `pgvector` (via `DocumentChunk#find_similar`)
+- Dual provider embedding/chat abstraction (OpenAI or local Ollama) via `EmbeddingsConfig`
+- Streaming chat responses (Server-Sent Events) with conversation persistence
+- Background jobs (Solid Queue) for chunk creation + embeddings (`DocumentChunkingJob`, `GenerateEmbeddingJob`)
+- Job dashboard at `/jobs` (mission_control-jobs)
+
+Frontend (React/MUI):
+
+- Conversation list (create, rename, delete) + streaming message view
+- SSE client that appends tokens live and updates conversation metadata once finished
+- Document management screen: upload, replace, delete, status polling, per-row action menu
+- Download button & file type detection (from `file_type`)
+- Auth placeholder (token stored in localStorage)
 
 ---
 
-## Requirements
+## 📦 Tech Stack
+
+| Layer       | Tech                                        |
+| ----------- | ------------------------------------------- |
+| Backend     | Rails 8, Ruby 3.3.8                         |
+| Data Store  | PostgreSQL + pgvector extension             |
+| Async Jobs  | solid_queue + mission_control-jobs UI       |
+| Embeddings  | OpenAI or Ollama (nomic-embed-text)         |
+| Chat Models | OpenAI GPT (gpt-4o-mini) or Ollama (llama3) |
+| Frontend    | React 19, Vite, MUI, React Router 7         |
+| Auth (stub) | Google OAuth endpoint + JWT scaffold        |
+
+---
+
+## ✅ Requirements
 
 - Ruby 3.3.8
-- Rails 8
-- PostgreSQL >= 14
-- Ollama (for local embeddings/chat testing)
+- PostgreSQL 14+ (with pgvector installed)
+- Node 20+/pnpm or npm (for React client)
+- Optional: Ollama (local LLM + embedding testing)
+- OpenAI API key (if using OpenAI)
 
-> **RAG (Retrieval-Augmented Generation):** Combines a vector search over documents with a generative LLM to produce context-aware answers.
+> RAG = retrieval (vector similarity over chunked documents) + generation (LLM answer synthesis) with injected context.
 
 ---
 
-## Installation
+## 🚀 Setup (Backend + Frontend)
 
-### 1. Clone the repo
+### 1. Clone
 
 ```bash
 git clone git@github.com:iamganeshn/smart_ai_assistant.git
-cd smart-ai-assistant
+cd smart_ai_assistant
 ```
 
-### 2. Install dependencies
+### 2. Ruby deps
 
 ```bash
 bundle install
 ```
 
-### 3. Set up environment variables
-
-Create a `.env` file in the root directory:
+### 3. Node deps (frontend)
 
 ```bash
-cp .env.example .env
+cd client
+npm install   # or pnpm install
+cd ..
 ```
 
-Update with your keys:
+### 4. Environment
+
+Create `.env` (if not already) and set (add only what you use):
 
 ```env
-OPENAI_API_KEY='your_openai_api_key'
+OPENAI_API_KEY=sk-...
 OLLAMA_URI_BASE=http://localhost:11434
+JWT_SECRET=change_me
+
+# Mission Control (basic auth for /jobs dashboard)
+MISSION_CONTROL_JOBS_USER=admin
+MISSION_CONTROL_JOBS_PASSWORD=secret
+
+# Active Storage (S3 / Bucketeer style vars)
+BUCKETEER_AWS_ACCESS_KEY_ID=
+BUCKETEER_AWS_SECRET_ACCESS_KEY=
+BUCKETEER_AWS_REGION=us-east-1
+BUCKETEER_BUCKET_NAME=
+
+# Google OAuth
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Slack App (for DM interactions)
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_APP_TOKEN=xapp-...
 ```
 
----
+Client (frontend) env lives in `client/.env` (copy from `client/.env.example`). Only keys prefixed with `VITE_` are exposed at build time.
 
-### 4. Set up PostgreSQL + pgvector
-
-- Ensure **PostgreSQL (>=14)** is installed and running.
-- Install the **pgvector** extension and enable it in your database:
-
-```bash
-brew install pgvector
-psql -d your_database -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```env
+VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+VITE_BACKEND_URL=http://localhost:3000
 ```
 
-### 5. Database setup
+### 5. Database & extensions
 
 ```bash
 bin/rails db:create
 bin/rails db:migrate
 ```
 
----
+Ensure pgvector is enabled (migration already included):
 
-### 6. Start Ollama server (local dev)
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
 
-Install Ollama:
+### 6. (Optional) Ollama models
 
 ```bash
 brew install ollama
-```
-
-Pull required models (one-time):
-
-```bash
 ollama pull llama3:latest
 ollama pull nomic-embed-text:latest
-```
-
-Start the server:
-
-```bash
 ollama serve
 ```
 
-Check available models:
+### 7. Start services
 
-```bash
-ollama list
-```
-
-Sample output:
-
-```
-nomic-embed-text:latest    274 MB
-llama3:latest              4.7 GB
-```
-
----
-
-### 7. Start background job worker
-
-Using **Solid Queue**:
-
-```bash
-bin/jobs start
-```
-
-> Document chunking and embedding generation happen automatically after document creation via async background jobs.
-
----
-
-### 8. Start Rails server
+In three terminals:
 
 ```bash
 bin/rails server
+bin/jobs start          # Solid Queue worker
+cd client && npm run dev
 ```
+
+Visit: http://localhost:5173 (frontend) and http://localhost:3000 (API), jobs dashboard at http://localhost:3000/jobs
 
 ---
 
-## Configuration
+## 🗂 Data Flow & Processing Pipeline
 
-Switch between **Ollama** and **OpenAI** models by updating `EmbeddingsConfig`:
+1. Upload file(s) → `DocumentsController#create` saves ActiveStorage blob (status: uploaded)
+2. After commit callback triggers `DocumentChunkingJob`
+3. File text extracted (PDF or plain text). Status → extracted
+4. Chunks created with overlap; status advances to embedding
+5. `GenerateEmbeddingJob` runs per chunk (embeddings stored in provider-specific column)
+6. When all chunks complete → document status: completed
+7. Chat queries embed the question and select similar chunks across (conversation + global) documents
 
-```ruby
-# config/initializers/embeddings.rb
-module EmbeddingsConfig
-  MODELS = {
-    openai: {
-      embedding_model: "text-embedding-3-small",
-      chat_model: "gpt-4o-mini",
-      tokenizer: "cl100k_base",
-      chunk_size: 500,
-      overlap_size: 50,
-      embedding_column: :embedding_openai
-    },
-    ollama: {
-      embedding_model: "nomic-embed-text",
-      chat_model: "llama3",
-      tokenizer: "p50k_base",
-      chunk_size: 300,
-      overlap_size: 30,
-      embedding_column: :embedding_ollama
-    }
-  }.freeze
-
-  # Default model to use
-  def self.active_model
-    MODELS[:ollama]  # change to :openai to switch
-  end
-
-  def self.active_model_key
-    MODELS.key(active_model)
-  end
-end
-```
-
-> **Note:** Changing the `active_model` key automatically updates embeddings and chat models throughout the app.
+Statuses exposed to frontend: uploaded, extracted, embedding, completed, failed.
 
 ---
 
-## Gems Used
+## 🔌 API Overview
 
-| Purpose                     | Gem                    |
-| --------------------------- | ---------------------- |
-| Database-backed Rails cache | `solid_cache`          |
-| Background jobs             | `solid_queue`          |
-| Job monitoring              | `mission_control-jobs` |
-| Asset pipeline fix          | `propshaft`            |
-| Vector similarity search    | `pgvector`             |
-| OpenAI client               | `ruby-openai`          |
-| Token-aware chunking        | `tiktoken_ruby`        |
-| PostgreSQL                  | `pg`                   |
-| Web server                  | `puma`                 |
-| Environment variables       | `dotenv-rails`         |
+| Method | Path               | Purpose                                       |
+| ------ | ------------------ | --------------------------------------------- |
+| POST   | /chat              | Stream chat completion (SSE)                  |
+| GET    | /conversations     | List conversations                            |
+| POST   | /conversations     | Create conversation                           |
+| GET    | /conversations/:id | Show conversation + messages                  |
+| PUT    | /conversations/:id | Rename conversation                           |
+| DELETE | /conversations/:id | Delete conversation                           |
+| GET    | /documents         | List documents (global or by conversation_id) |
+| POST   | /documents         | Upload multiple documents                     |
+| PUT    | /documents/:id     | Replace file                                  |
+| DELETE | /documents/:id     | Delete document                               |
+| POST   | /google/callback   | Google OAuth (stub for auth)                  |
+| POST   | /slack/events      | Slack Events (message DMs)                    |
 
-> **Note:** `solid_cache` and `solid_cable` are optional and currently not actively used, but can be leveraged for caching or real-time updates in the future.
+SSE response stream sends incremental `{ content: "token" }` chunks then a final metadata object `{ conversation_id, conversation_title }`.
 
 ---
 
-## Quick Start / Example Usage
+## 🧠 Embeddings & Model Switching
 
-Create a document and let background jobs handle chunking & embedding:
+`config/initializers/embeddings.rb` centralizes provider configs. Change the return value of `active_model` to switch between `:ollama` and `:openai`. Each provider supplies:
+
+- embedding_model
+- chat_model
+- tokenizer
+- chunk_size & overlap_size
+- embedding_column (per-provider storage on chunks)
+
+Regenerating embeddings after a switch is left to future tasks (e.g., backfill job).
+
+---
+
+## 🖥 Frontend Dev Notes
+
+- Uses fetch for streaming SSE (manual reader) in chat component.
+- Conversation state cached client-side; titles updated optimistically.
+- Document table polls every 5s while any doc not completed/failed.
+- Download icon uses `file_url` from API; file type column derived from MIME subtype.
+
+---
+
+## 🔐 Auth (Current State)
+
+- Minimal placeholder: token expected in `Authorization` header (localStorage key `tech9gpt_user`).
+- Google login endpoint exists.
+- Slack DM integration: users can DM the bot; only allowed domain logic placeholder in `Slack::EventsController`.
+
+---
+
+## 🧪 Quick Console Examples
 
 ```ruby
-# rails console
-doc = Document.create!(text: File.read("sample_long_text.txt"))
+# Get similar context manually
+emb = ChatCompletionService.new(conversation_id: Conversation.first.id, user_id: User.first.id, query: "Test", stream: false).fetch_embedding
+similar_texts = DocumentChunk.joins(:document).find_similar(emb).limit(5).map(&:text)
 ```
-
-Retrieve embeddings and search for similar chunks:
-
-```ruby
-embedding = EmbeddingsConfig.active_model[:embedding_model]
-chunks = doc.document_chunks
-puts chunks.map(&:text)
-```
-
-Send a query via chat API:
 
 ```bash
-curl -X POST http://localhost:3000/chat/completion \
-     -d "query=What are the effects of climate change?"
+# Raw chat (SSE) example
+curl -N -H 'Content-Type: application/json' \
+  -d '{"query":"What documents do we have?","conversation_id":1}' \
+  http://localhost:3000/chat
+
+# Slack URL verification (simulate)
+curl -X POST http://localhost:3000/slack/events \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"url_verification","challenge":"test123"}'
 ```
 
-Streaming responses are supported via **SSE**, so users see partial answers as they are generated.
+---
+
+## 🛣 Roadmap (Short-Term)
+
+- Retry & failure reason for documents
+- Granular progress (chunk counts / embedded counts)
+- Search + filter + sort on documents table
+- Live push (Action Cable / SSE) for document status instead of polling
+- Auth hardening + per-user doc scoping
+- Domain allow-list enforcement for Slack (currently placeholder logic inverted)
+- Slack thread replies & conversation persistence mapping
 
 ---
 
-## Notes
+## 🙌 Contributing
 
-- All chunking/embedding happens **asynchronously** after document creation.
-- You can switch between Ollama and OpenAI models by updating `EmbeddingsConfig`.
-- SSE streaming is used for chat responses; **Action Cable** is not required for now.
-- Tested with **Ollama 0.11.10** and **PostgreSQL 14**.
+PRs welcome. Please include a short description and update README if changing setup steps.
 
 ---
+
+## 📒 Notes
+
+- All heavy work (text extraction, chunking, embeddings) offloaded to background jobs.
+- SSE chosen over WebSockets for simplicity; can migrate later.
+- Designed for incremental extension (tools, function calling, richer doc metadata).
+
+---
+
+Happy hacking! 🧪
