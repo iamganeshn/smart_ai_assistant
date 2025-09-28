@@ -10,11 +10,20 @@ export const chat = async (content, conversationId = null) => {
     body.conversation_id = conversationId;
   }
 
+  let user = window.localStorage.getItem('tech9gpt_user');
+  user = user ? JSON.parse(user) : null;
+
+  const headers = { 'Content-Type': 'application/json' };
+  console.log('user', user);
+  if (user?.token) {
+    headers['Authorization'] = user.token;
+  }
+
   return fetch(
     `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/chat`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify(body),
     }
   );
@@ -42,35 +51,46 @@ export const deleteConversation = (id) => {
 
 export const uploadDocuments = (files, conversationId = null) => {
   const formData = new FormData();
+  console.log('files', files);
   files.forEach((f) => formData.append('files[]', f));
+
   if (conversationId) formData.append('conversation_id', conversationId);
-  return fetch(
-    `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/documents`,
-    {
-      method: 'POST',
-      body: formData,
-    }
-  ).then((r) => r.json());
+
+  let user = window.localStorage.getItem('tech9gpt_user');
+  user = user ? JSON.parse(user) : null;
+
+  const headers = {};
+  headers['Content-Type'] = 'multipart/form-data';
+  if (user?.token) headers['Authorization'] = user.token;
+
+  return axios
+    .post('/documents', formData, { headers })
+    .then((response) => response.data)
+    .catch((error) => {
+      console.error('Failed to upload documents:', error);
+      throw error;
+    });
 };
 
 export const fetchDocuments = (ids, conversationId = null) => {
-  const params = new URLSearchParams();
-  if (conversationId) params.append('conversation_id', conversationId);
-  return fetch(
-    `${
-      import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
-    }/documents?${params.toString()}`
-  ).then((r) => r.json());
+  const params = {};
+  if (conversationId) params.conversation_id = conversationId;
+
+  return axios
+    .get('/documents', { params })
+    .then((response) => response.data)
+    .catch((error) => {
+      console.error('Failed to fetch documents:', error);
+      throw error;
+    });
 };
 
 export const deleteDocument = (id) => {
-  return fetch(
-    `${
-      import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
-    }/documents/${id}`,
-    { method: 'DELETE' }
-  ).then(async (r) => {
-    if (!r.ok) throw new Error('Failed to delete document');
-    return r.json().catch(() => ({}));
-  });
+  return axios
+    .delete(`/documents/${id}`)
+    .then((response) => response.data)
+    .catch((error) => {
+      console.error('Failed to delete document:', error);
+      throw error;
+    });
 };

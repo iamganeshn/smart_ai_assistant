@@ -66,7 +66,7 @@ class DocumentsController < ApplicationController
 
   def document_response(document)
     file = document.file
-    document.as_json(only: [ :id, :status, :conversation_id ]).merge(
+    document.as_json(only: [ :id, :status, :conversation_id, :created_at ]).merge(
       file_url: file.attached? ? url_for(file) : nil,
       file_name: file.attached? ? file.filename.to_s : nil,
       file_size: file.attached? ? "#{file.byte_size/1000} Kb" : nil,

@@ -1,5 +1,8 @@
 # app/controllers/slack/events_controller.rb
 class Slack::EventsController < ApplicationController
+  skip_before_action :authenticate_request
+
+  # POST /slack/events
   def create
     payload = JSON.parse(request.body.read)
 

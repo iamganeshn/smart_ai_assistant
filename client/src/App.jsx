@@ -148,8 +148,15 @@ export default function App() {
                   />
                 }
               />
-              <Route path="/documents" element={<DocumentUploadScreen />} />
-              <Route path="/employees" element={<EmployeeProjectScreen />} />
+              {user.role === 'admin' && (
+                <>
+                  <Route path="/documents" element={<DocumentUploadScreen />} />
+                  <Route
+                    path="/employees"
+                    element={<EmployeeProjectScreen />}
+                  />
+                </>
+              )}
               <Route path="*" element={<Navigate to="/chat" />} />
             </Routes>
           </AppLayout>

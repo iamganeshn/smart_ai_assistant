@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -7,27 +7,42 @@ import {
   IconButton,
   Drawer,
   List,
-  ListItem,
   ListItemText,
   ListItemButton,
   Box,
   Button,
   Divider,
   CircularProgress,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import MenuIcon from '@mui/icons-material/Menu';
 import AddIcon from '@mui/icons-material/Add';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ConversationEditModal from './components/ConversationEditModal';
+import { deleteConversation } from './utils/api';
 import { useConversationContext } from './contexts/ConversationContext';
+import { useAuth } from './hooks/useAuth';
 
 const drawerWidth = 300;
 
 export default function AppLayout({ children }) {
   const location = useLocation();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const { conversations, loading } = useConversationContext();
+  const { conversations, loading, updateConversationTitle, removeConversation } = useConversationContext();
 
   const [drawerOpen, setDrawerOpen] = useState(true);
+  const [editingConversation, setEditingConversation] = useState(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+  const [menuConversation, setMenuConversation] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const toggleDrawer = () => setDrawerOpen(!drawerOpen);
 
@@ -49,6 +64,54 @@ export default function AppLayout({ children }) {
 
   const handleConversationClick = (id) => {
     navigate(`/chat/${id}`);
+  };
+
+  const openMenu = (conv, e) => {
+    e.stopPropagation();
+    setMenuAnchorEl(e.currentTarget);
+    setMenuConversation(conv);
+  };
+
+  const closeMenu = () => {
+    setMenuAnchorEl(null);
+  };
+
+  const handleMenuEdit = () => {
+    if (menuConversation) setEditingConversation(menuConversation);
+    closeMenu();
+  };
+
+  const handleMenuDelete = () => {
+    if (menuConversation) setDeleteDialogOpen(true);
+    closeMenu();
+  };
+
+  const handleUpdated = (id, title) => {
+    updateConversationTitle(id, title);
+  };
+
+  const handleDeleted = (id) => {
+    removeConversation(id);
+    if (location.pathname.includes(`/chat/${id}`)) navigate('/chat');
+  };
+
+  const confirmDelete = () => {
+    if (!menuConversation) { setDeleteDialogOpen(false); return; }
+    const id = menuConversation.id;
+    deleteConversation(id)
+      .then(() => {
+        handleDeleted(id);
+        setDeleteDialogOpen(false);
+        setMenuConversation(null);
+      })
+      .catch(() => {
+        setDeleteDialogOpen(false);
+      });
+  };
+
+  const cancelDelete = () => {
+    setDeleteDialogOpen(false);
+    if (!editingConversation) setMenuConversation(null);
   };
 
   return (
@@ -101,15 +164,19 @@ export default function AppLayout({ children }) {
           <Box sx={{ flexGrow: 1 }} />
 
           {/* Top Navigation */}
-          <Button color="inherit" onClick={() => navigate('/chat')}>
-            Conversations
-          </Button>
-          <Button color="inherit" onClick={() => navigate('/documents')}>
-            Documents
-          </Button>
-          <Button color="inherit" onClick={() => navigate('/employees')}>
-            Team
-          </Button>
+          {user.role === 'admin' && (
+            <>
+              <Button color="inherit" onClick={() => navigate('/chat')}>
+                Conversations
+              </Button>
+              <Button color="inherit" onClick={() => navigate('/documents')}>
+                Documents
+              </Button>
+              <Button color="inherit" onClick={() => navigate('/employees')}>
+                Team
+              </Button>
+            </>
+          )}
         </Toolbar>
       </AppBar>
 
@@ -171,21 +238,32 @@ export default function AppLayout({ children }) {
                     minHeight: 48,
                     justifyContent: drawerOpen ? 'initial' : 'center',
                     px: 2.5,
+                    position: 'relative'
                   }}
                 >
                   {drawerOpen && (
-                    <ListItemText
-                      primary={conv.title}
-                      sx={{
-                        'opacity': drawerOpen ? 1 : 0,
-                        '& .MuiListItemText-primary': {
-                          fontSize: '0.875rem',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        },
-                      }}
-                    />
+                    <>
+                      <ListItemText
+                        primary={conv.title}
+                        sx={{
+                          'opacity': drawerOpen ? 1 : 0,
+                          '& .MuiListItemText-primary': {
+                            fontSize: '0.875rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            pr: 5,
+                          },
+                        }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={(e) => openMenu(conv, e)}
+                        sx={{ position: 'absolute', right: 4, top: 6 }}
+                      >
+                        <MoreVertIcon fontSize="small" />
+                      </IconButton>
+                    </>
                   )}
                 </ListItemButton>
               ))}
@@ -205,6 +283,32 @@ export default function AppLayout({ children }) {
         }}
       >
         {children}
+        <ConversationEditModal
+          open={!!editingConversation}
+          conversation={editingConversation}
+          onClose={() => setEditingConversation(null)}
+          onUpdated={handleUpdated}
+        />
+        <Menu
+          anchorEl={menuAnchorEl}
+          open={Boolean(menuAnchorEl)}
+          onClose={closeMenu}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <MenuItem onClick={handleMenuEdit}>Edit</MenuItem>
+          <MenuItem onClick={handleMenuDelete}>Delete</MenuItem>
+        </Menu>
+        <Dialog open={deleteDialogOpen} onClose={cancelDelete} maxWidth="xs" fullWidth>
+          <DialogTitle>Delete Conversation</DialogTitle>
+          <DialogContent>
+            Are you sure you want to delete "{menuConversation?.title}"? This cannot be undone.
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={cancelDelete}>Cancel</Button>
+            <Button color="error" variant="contained" onClick={confirmDelete}>Delete</Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </Box>
   );

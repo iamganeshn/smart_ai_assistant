@@ -1,12 +1,21 @@
 class ApplicationController < ActionController::API
-  def openai_client
-    case EmbeddingsConfig.active_model_key
-    when :openai
-      OpenAI::Client.new(access_token: ENV.fetch("OPENAI_API_KEY"))
-    when :ollama
-      OpenAI::Client.new(uri_base: ENV.fetch("OLLAMA_URI_BASE"))
-    else
-      raise "Unknown embedding provider: #{EmbeddingsConfig.active_model_key}"
-    end
+  before_action :authenticate_request
+
+  private
+
+  # Returns the current logged-in user based on JWT token
+  def current_user
+    return @current_user if defined?(@current_user)
+
+    header = request.headers['Authorization']
+    token = header.split(' ').last if header.present?
+
+    decoded = JsonWebToken.decode(token)
+    @current_user = User.find_by(id: decoded[:user_id]) if decoded
+  end
+
+  # Ensure request has valid token
+  def authenticate_request
+    render json: { error: 'Not Authorized' }, status: :unauthorized unless current_user
   end
 end

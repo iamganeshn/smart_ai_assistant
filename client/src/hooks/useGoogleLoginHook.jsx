@@ -14,7 +14,6 @@ export const useGoogleLoginHook = (
 
   const handleLoginSuccess = async (result) => {
     try {
-      console.log('Google response:', result);
       const { code } = result; // Authorization code returned by Google OAuth
       handleBackdropOpen();
       const response = await API.googleLogin({

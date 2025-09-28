@@ -1,5 +1,6 @@
 # app/controllers/chat_controller.rb
 class ChatController < ApplicationController
+
   include ActionController::Live
   def completion
     return if performed?
@@ -32,10 +33,5 @@ class ChatController < ApplicationController
     Rails.logger.error("Streaming error: #{e.message}")
   ensure
     response.stream.close
-  end
-
-  def current_user
-    # Todo: Replace with actual authentication logic
-    User.first
   end
 end

@@ -176,15 +176,6 @@ export function DocumentUploadScreen({ onBack }) {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar position="static" color="inherit" elevation={1}>
-        <Toolbar>
-          <IconButton edge="start" onClick={onBack} sx={{ mr: 2 }}>
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h6">Document Management</Typography>
-        </Toolbar>
-      </AppBar>
-
       <Container maxWidth="lg" sx={{ py: 3 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* Upload Section */}

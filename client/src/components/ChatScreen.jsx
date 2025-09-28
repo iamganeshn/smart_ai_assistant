@@ -19,7 +19,7 @@ import { Backdrop, CircularProgress } from '@mui/material';
 
 import Notification from '../utils/Notification';
 import { useConversationContext } from '../contexts/ConversationContext';
-
+import { useAuth } from '../hooks/useAuth';
 import {
   Send as SendIcon,
   AttachFile as AttachFileIcon,
@@ -31,6 +31,7 @@ import {
 import * as API from '../utils/api';
 
 const ChatScreen = (props) => {
+  const { user } = useAuth();
   const { conversationId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -232,6 +233,7 @@ const ChatScreen = (props) => {
         updateConversationTitle(newConversationId, conversationTitle);
       }
     } catch (error) {
+      console.error('Chat error:', error);
       setAlert({ message: 'Failed to send message', type: 'error' });
       setMessages((prev) =>
         prev.filter((m) => m.id !== userMessage.id && m.id !== aiMessage.id)
@@ -321,9 +323,11 @@ const ChatScreen = (props) => {
             </Card>
 
             {message.role === 'user' && (
-              <Avatar sx={{ bgcolor: 'secondary.main' }}>
-                <PersonIcon />
-              </Avatar>
+              <Avatar
+                alt={user.name}
+                src={user.avatar_image_url}
+                sx={{ width: 30, height: 30 }}
+              />
             )}
           </Stack>
         ))}

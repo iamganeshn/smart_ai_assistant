@@ -57,6 +57,13 @@ export const useConversations = () => {
     [currentConversation?.id]
   );
 
+  const removeConversation = useCallback((id) => {
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    if (currentConversation?.id === id) {
+      setCurrentConversation(null);
+    }
+  }, [currentConversation?.id]);
+
   useEffect(() => {
     fetchConversations();
   }, [fetchConversations]);
@@ -70,5 +77,6 @@ export const useConversations = () => {
     clearCurrentConversation,
     addNewConversation,
     updateConversationTitle,
+  removeConversation,
   };
 };
