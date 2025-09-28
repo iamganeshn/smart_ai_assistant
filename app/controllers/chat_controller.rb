@@ -13,20 +13,22 @@ class ChatController < ApplicationController
       stream: true
     )
 
-    service.call do |text|
-      next unless text
+    service.call do |payload|
+      next unless payload
 
-      content = { content: text }.to_json
-      response.stream.write("data: #{content}\n\n")
+      json = payload.is_a?(String) ? { type: "delta", content: payload }.to_json : payload.to_json
+      response.stream.write("data: #{json}\n\n")
     end
 
     # Stream conversation metadata at the end
     if service.conversation
-      metadata = {
-        conversation_id: service.conversation.id,
-        conversation_title: service.conversation.title
-      }.to_json
-      response.stream.write("data: #{metadata}\n\n")
+      response.stream.write(
+        "data: #{ {
+          type: "metadata",
+          conversation_id: service.conversation.id,
+          conversation_title: service.conversation.title
+        }.to_json }\n\n"
+      )
     end
   rescue => e
     Rails.logger.error("Streaming error: #{e.message}")

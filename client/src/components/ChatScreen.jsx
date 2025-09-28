@@ -32,6 +32,16 @@ import {
 
 import * as API from '../utils/api';
 
+// Simple animated dots component (1..3 looping)
+const AnimatedDots = () => {
+  const [count, setCount] = useState(1);
+  useEffect(() => {
+    const id = setInterval(() => setCount((c) => (c === 3 ? 1 : c + 1)), 500);
+    return () => clearInterval(id);
+  }, []);
+  return <span>{'.'.repeat(count)}</span>;
+};
+
 const ChatScreen = (props) => {
   const { user } = useAuth();
   const { conversationId } = useParams();
@@ -232,8 +242,10 @@ const ChatScreen = (props) => {
     // Create empty AI message for streaming
     const aiMessage = {
       id: `assistant-msg-${Date.now()}`,
-      content: 'Typing...',
+      content: '',
       role: 'assistant',
+      loading: true,
+      toolCalling: null,
     };
 
     setMessages((prev) => [...prev, aiMessage]);
@@ -257,27 +269,72 @@ const ChatScreen = (props) => {
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
-          let data = line.slice(6);
-          if (!data) continue;
+          let raw = line.slice(6);
+          if (!raw) continue;
           try {
-            data = JSON.parse(data);
-            if (data.content) {
-              fullContent += data.content;
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === aiMessage.id ? { ...m, content: fullContent } : m
-                )
-              );
+            const data = JSON.parse(raw);
+            switch (data.type) {
+              case 'delta': {
+                if (data.content) {
+                  const firstChunk = fullContent.length === 0;
+                  fullContent += data.content;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === aiMessage.id
+                        ? {
+                            ...m,
+                            content: fullContent,
+                            loading: firstChunk ? false : m.loading,
+                            toolCalling: null,
+                          }
+                        : m
+                    )
+                  );
+                }
+                break;
+              }
+              case 'tool_call': {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === aiMessage.id
+                      ? {
+                          ...m,
+                          toolCalling: {
+                            tool: data.tool,
+                            startedAt: Date.now(),
+                          },
+                          loading: false,
+                        }
+                      : m
+                  )
+                );
+                break;
+              }
+              case 'metadata': {
+                if (data.conversation_id)
+                  newConversationId = data.conversation_id;
+                if (data.conversation_title)
+                  conversationTitle = data.conversation_title;
+                break;
+              }
+              default: {
+                // Fallback: treat as delta if content present
+                if (data.content) {
+                  fullContent += data.content;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === aiMessage.id ? { ...m, content: fullContent } : m
+                    )
+                  );
+                }
+              }
             }
-            if (data.conversation_id) newConversationId = data.conversation_id;
-            if (data.conversation_title)
-              conversationTitle = data.conversation_title;
-          } catch {
-            console.error('Failed to parse stream data', data);
+          } catch (err) {
+            console.error('Failed to parse stream data', raw, err);
           }
         }
       }
-      // Add to conversations list
+      // Add updated title to conversation
       if (
         conversationTitle &&
         currentConversation?.title === 'New Conversation'
@@ -336,129 +393,155 @@ const ChatScreen = (props) => {
           const isUser = message.role === 'user';
           const isAssistant = message.role === 'assistant';
           return (
-            <Stack
+            <Box
               key={message.id}
-              direction="row"
-              spacing={1}
-              justifyContent={isUser ? 'flex-end' : 'flex-start'}
-              alignItems="flex-start"
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: isUser ? 'flex-end' : 'flex-start',
+                gap: 0.5,
+              }}
             >
-              {/* Assistant avatar on left */}
-              {isAssistant && (
-                <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
-                  <BotIcon fontSize="small" />
-                </Avatar>
-              )}
-
-              <Card
-                sx={{
-                  maxWidth: '80%',
-                  borderRadius: 2,
-                  bgcolor: isUser ? 'primary.main' : 'background.paper',
-                  color: isUser ? 'primary.contrastText' : 'text.primary',
-                  boxShadow: 3,
-                  alignSelf: isUser ? 'flex-end' : 'flex-start',
-                }}
+              <Stack
+                direction="row"
+                spacing={1}
+                justifyContent={isUser ? 'flex-end' : 'flex-start'}
+                alignItems="flex-start"
               >
-                <CardContent
+                {isAssistant && (
+                  <Avatar
+                    sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}
+                  >
+                    <BotIcon fontSize="small" />
+                  </Avatar>
+                )}
+                {isAssistant && (message.loading || message.toolCalling) && (
+                  <Typography
+                    variant="body2"
+                    color="text.primary"
+                    fontStyle="italic"
+                  >
+                    {message.loading && (
+                      <>
+                        Thinking <AnimatedDots />
+                      </>
+                    )}
+                    {!message.loading && message.toolCalling && (
+                      <>
+                        Calling tool: {message.toolCalling.tool}{' '}
+                        <AnimatedDots />
+                      </>
+                    )}
+                  </Typography>
+                )}
+                <Card
                   sx={{
-                    'px': 2,
-                    'py': isAssistant ? 0 : 2,
-                    // MUI applies extra bottom padding to last-child; override it
-                    '&:last-child': { pb: isAssistant ? 0 : 2 },
+                    maxWidth: '80%',
+                    borderRadius: 2,
+                    bgcolor: isUser ? 'primary.main' : 'background.paper',
+                    color: isUser ? 'primary.contrastText' : 'text.primary',
+                    boxShadow: 3,
+                    alignSelf: isUser ? 'flex-end' : 'flex-start',
                   }}
                 >
-                  {isAssistant ? (
-                    <Box
-                      sx={{
-                        '& pre': {
-                          bgcolor: 'grey.900',
-                          color: 'grey.100',
-                          p: 1.5,
-                          borderRadius: 1,
-                          overflowX: 'auto',
-                          fontSize: '0.8rem',
-                        },
-                        '& code': {
-                          bgcolor: 'grey.100',
-                          color: 'grey.900',
-                          px: 0.5,
-                          py: 0.2,
-                          borderRadius: 0.5,
-                          fontSize: '0.85rem',
-                          fontFamily:
-                            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-                        },
-                        '& pre code': {
-                          bgcolor: 'transparent',
-                          color: 'inherit',
-                          p: 0,
-                        },
-                        '& a': {
-                          color: 'primary.main',
-                          textDecoration: 'none',
-                        },
-                        '& a:hover': {
-                          textDecoration: 'underline',
-                        },
-                        '& ul, & ol': {
-                          pl: 3,
-                          my: 1,
-                        },
-                        '& blockquote': {
-                          borderLeft: '4px solid',
-                          borderColor: 'grey.300',
-                          pl: 2,
-                          ml: 0,
-                          my: 1,
-                          color: 'grey.700',
-                          fontStyle: 'italic',
-                          bgcolor: 'grey.50',
-                          borderRadius: 1,
-                          py: 0.5,
-                        },
-                        'wordBreak': 'break-word',
-                        'textAlign': 'left',
-                      }}
-                    >
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <CardContent
+                    sx={{
+                      'px': 2,
+                      'py': isAssistant ? 0 : 2,
+                      '&:last-child': { pb: isAssistant ? 0 : 2 },
+                    }}
+                  >
+                    {isAssistant ? (
+                      <Box
+                        sx={{
+                          '& pre': {
+                            bgcolor: 'grey.900',
+                            color: 'grey.100',
+                            p: 1.5,
+                            borderRadius: 1,
+                            overflowX: 'auto',
+                            fontSize: '0.8rem',
+                          },
+                          '& code': {
+                            bgcolor: 'grey.100',
+                            color: 'grey.900',
+                            px: 0.5,
+                            py: 0.2,
+                            borderRadius: 0.5,
+                            fontSize: '0.85rem',
+                            fontFamily:
+                              "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+                          },
+                          '& pre code': {
+                            bgcolor: 'transparent',
+                            color: 'inherit',
+                            p: 0,
+                          },
+                          '& a': {
+                            color: 'primary.main',
+                            textDecoration: 'none',
+                          },
+                          '& a:hover': {
+                            textDecoration: 'underline',
+                          },
+                          '& ul, & ol': {
+                            pl: 3,
+                            my: 1,
+                          },
+                          '& blockquote': {
+                            borderLeft: '4px solid',
+                            borderColor: 'grey.300',
+                            pl: 2,
+                            ml: 0,
+                            my: 1,
+                            color: 'grey.700',
+                            fontStyle: 'italic',
+                            bgcolor: 'grey.50',
+                            borderRadius: 1,
+                            py: 0.5,
+                          },
+                          'wordBreak': 'break-word',
+                          'textAlign': 'left',
+                        }}
+                      >
+                        {message.content && (
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {message.content}
+                          </ReactMarkdown>
+                        )}
+                      </Box>
+                    ) : (
+                      <Typography
+                        variant="body1"
+                        sx={{ wordBreak: 'break-word' }}
+                      >
                         {message.content}
-                      </ReactMarkdown>
-                    </Box>
-                  ) : (
-                    <Typography
-                      variant="body1"
-                      sx={{ wordBreak: 'break-word' }}
-                    >
-                      {message.content}
-                    </Typography>
-                  )}
-
-                  {message.attachedFiles?.length > 0 && (
-                    <Stack direction="row" spacing={1} mt={1} flexWrap="wrap">
-                      {message.attachedFiles.map((file, idx) => (
-                        <Chip
-                          key={idx}
-                          size="small"
-                          icon={<FileTextIcon />}
-                          label={file.name}
-                          sx={{ bgcolor: 'grey.200' }}
-                        />
-                      ))}
-                    </Stack>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* User avatar on right */}
-              {isUser && (
-                <Avatar
-                  alt={user.name}
-                  src={user.avatar_image_url}
-                  sx={{ width: 30, height: 30 }}
-                />
-              )}
-            </Stack>
+                      </Typography>
+                    )}
+                    {message.attachedFiles?.length > 0 && (
+                      <Stack direction="row" spacing={1} mt={1} flexWrap="wrap">
+                        {message.attachedFiles.map((file, idx) => (
+                          <Chip
+                            key={idx}
+                            size="small"
+                            icon={<FileTextIcon />}
+                            label={file.name}
+                            sx={{ bgcolor: 'grey.200' }}
+                          />
+                        ))}
+                      </Stack>
+                    )}
+                  </CardContent>
+                </Card>
+                {isUser && (
+                  <Avatar
+                    alt={user.name}
+                    src={user.avatar_image_url}
+                    sx={{ width: 30, height: 30 }}
+                  />
+                )}
+              </Stack>
+            </Box>
           );
         })}
         <div ref={messagesEndRef} />

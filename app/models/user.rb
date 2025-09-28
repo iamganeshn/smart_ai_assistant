@@ -15,6 +15,16 @@ class User < ApplicationRecord
   has_many :messages, through: :conversations, dependent: :destroy
   has_one_attached :avatar_image
 
+  scope :search_by_name, ->(name) {
+    sanitized = name.to_s.strip.downcase
+    where(
+      "LOWER(first_name) LIKE :name OR LOWER(last_name) LIKE :name OR
+      LOWER(first_name || ' ' || last_name) LIKE :name OR
+      LOWER(last_name || ' ' || first_name) LIKE :name",
+      name: "%#{sanitized}%"
+    )
+  }
+
   def full_name
     "#{first_name} #{last_name}"
   end
@@ -32,7 +42,7 @@ class User < ApplicationRecord
      user.last_name = profile["family_name"]
      user.save!
    end
-   user.attach_avatar_from_url(profile["picture"])
+   user.attach_avatar_from_url(profile["picture"]) if user.avatar_image.attached?
    user
  end
 

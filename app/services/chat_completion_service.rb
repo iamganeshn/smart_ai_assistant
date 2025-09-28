@@ -67,8 +67,7 @@ class ChatCompletionService
         model: embedding_config[:chat_model],
         instructions: build_instructions(context),
         input: @messages,
-        # Todo: replace with actual tools later
-        # tools: [create_contact_tool],
+        tools: [employee_lookup_tool, employee_count_tool],
         store: false,
         stream: proc do |chunk, _event|
           handle_chunk(chunk, &stream_writer)
@@ -96,15 +95,24 @@ class ChatCompletionService
     when "response.output_text.delta"
       delta_text = chunk["delta"]
       @assistant_response += delta_text if delta_text
-      stream_writer.call(delta_text) if stream_writer
+      stream_writer.call({ type: "delta", content: delta_text }) if stream_writer && delta_text.present?
+
     when "response.completed"
       Rails.logger.info("Response usage: #{chunk.dig('response', 'usage')}")
+
     when "response.output_item.done"
-      # Todo: handle tool results properly later
-      if chunk.dig("item", "name") == "create_contact"
-        arguments = JSON.parse(chunk["item"]["arguments"])
-        # create_contact(arguments)
-        @messages << { content: { status: "success", message: "Contact created/updated successfully." }.to_json }
+      tool_name = chunk.dig("item", "name")
+      if tool_name == "get_employee_info"
+        args = JSON.parse(chunk["item"]["arguments"])
+        # Notify client we are invoking the tool
+        stream_writer.call({ type: "tool_call", tool: tool_name }) if stream_writer
+        result = lookup_employee(args["name"])
+        @messages << { role: "assistant", content: result }
+        @tool_result = true
+
+      elsif tool_name == "get_employee_count"
+        stream_writer.call({ type: "tool_call", tool: tool_name }) if stream_writer
+        @messages << { role: "assistant", content: "Total Tech9 Employees: #{User.count}" }
         @tool_result = true
       end
     end
@@ -112,9 +120,12 @@ class ChatCompletionService
 
   def build_instructions(context)
     <<~PROMPT
-      You are a Tech9GPT, helpful AI assistant for the employees of Tech9.
+      You are Tech9GPT, a helpful AI assistant for Tech9 employees.
 
-      Your job is to answer questions about any query using the provided context
+      You can use the provided context, or call tools to fetch information.
+
+      - If the user asks about an employee (like email or details), use `get_employee_info`.
+      - If the user asks about the total number of employees, use `get_employee_count`.
 
       Context:
 
@@ -138,27 +149,49 @@ class ChatCompletionService
       { role: message.role, content: message.content }
     end
   end
-  # Todo: implement actual tool actions later
-  def create_contact_tool
+
+  # ---------------- Tools ----------------
+
+  def employee_lookup_tool
     {
       "type" => "function",
-      "name" => "create_contact",
-      "description" => "Whenever we get a lead, create/update a contact",
+      "name" => "get_employee_info",
+      "description" => "Retrieve employee information from Tech9 users table",
       "parameters" => {
         "type" => "object",
         "properties" => {
-          "name" => { "type" => "string" },
-          "mobile" => { "type" => "string" },
-          "email" => { "type" => "string" }
+          "name" => { "type" => "string", "description" => "Employee full or partial name" }
         },
-        "required" => [ "mobile", "email" ]
+        "required" => ["name"]
       }
     }
   end
 
+  def employee_count_tool
+    {
+      "type" => "function",
+      "name" => "get_employee_count",
+      "description" => "Retrieve the total number of employees (users count)",
+      "parameters" => { "type" => "object", "properties" => {} }
+    }
+  end
+
+  def lookup_employee(name)
+    users = User.search_by_name(name)
+    if users.any?
+      { status: "success", users: users.map { |user| { name: user.full_name, email: user.email } } }
+      message = ""
+      users.each do |user|
+        message += "Name: #{user.full_name}, Email: #{user.email}\n"
+      end
+      message.strip
+    else
+      "No employee found with name like '#{name}'"
+    end
+  end
+
   private
 
-  # Todo: Make it as global method later
   def openai_client
     case EmbeddingsConfig.active_model_key
     when :openai
