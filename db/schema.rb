@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_27_134344) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_28_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "vector"
@@ -69,7 +69,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_27_134344) do
     t.integer "status", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id"
     t.index ["conversation_id"], name: "index_documents_on_conversation_id"
+    t.index ["user_id"], name: "index_documents_on_user_id"
   end
 
   create_table "messages", force: :cascade do |t|
@@ -218,6 +220,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_27_134344) do
   add_foreign_key "conversations", "users"
   add_foreign_key "document_chunks", "documents"
   add_foreign_key "documents", "conversations"
+  add_foreign_key "documents", "users"
   add_foreign_key "messages", "conversations"
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_claimed_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade

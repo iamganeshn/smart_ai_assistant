@@ -3,6 +3,7 @@ class Document < ApplicationRecord
 
   has_many :document_chunks, dependent: :destroy
   belongs_to :conversation, optional: true
+  belongs_to :user, optional: true # uploader
 
   after_commit :create_chunks_async, on: [ :create, :update ], if: :file_changed?
 

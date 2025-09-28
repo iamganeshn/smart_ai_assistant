@@ -24,7 +24,7 @@ class DocumentsController < ApplicationController
     failed_documents = []
 
     document_params[:files].each do |file|
-      document = Document.new(file: file, conversation_id: document_params[:conversation_id])
+      document = Document.new(file: file, conversation_id: document_params[:conversation_id], user: current_user)
       if document.save
         created_documents << document_response(document)
       else
@@ -71,7 +71,12 @@ class DocumentsController < ApplicationController
       file_name: file.attached? ? file.filename.to_s : nil,
       file_size: file.attached? ? "#{file.byte_size/1000} Kb" : nil,
       file_type: file.attached? ? file.content_type : nil,
-      is_global: document.conversation_id.nil?
+      is_global: document.conversation_id.nil?,
+      uploader: document.user ? {
+        id: document.user.id,
+        name: [document.user.first_name, document.user.last_name].compact.join(' '),
+        email: document.user.email
+      } : nil
     )
   end
 end

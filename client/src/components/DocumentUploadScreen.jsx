@@ -368,7 +368,19 @@ export function DocumentUploadScreen({ onBack }) {
                             </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell align="center">-</TableCell>
+                        <TableCell align="center">
+                          {doc.uploader ? (
+                            <Tooltip title={doc.uploader.email}>
+                              <span>
+                                {doc.uploader.name || doc.uploader.email}
+                              </span>
+                            </Tooltip>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              -
+                            </Typography>
+                          )}
+                        </TableCell>
                         <TableCell align="center">
                           <Typography variant="body2">
                             {doc.created_at
