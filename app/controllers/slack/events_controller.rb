@@ -11,6 +11,8 @@ class Slack::EventsController < ApplicationController
     event = payload['event']
     return unless event && event['type'] == 'message' && event['channel'].start_with?('D')
 
+    return if event['bot_id']
+
     user_id = event['user']
     channel_id = event['channel']
 
@@ -18,8 +20,7 @@ class Slack::EventsController < ApplicationController
     Rails.logger.info("User profile: #{profile.inspect}")
     # Todo: Update Restricting to only tech9.com users for now after testing
     unless profile&.email&.end_with?('@tech9.com')
-      # response_text = fetch_gpt_response(event['text'])
-      response_text = "Hello How can I help you."
+      response_text = SlackChatService.new(event['text']).call
       send_message(channel_id, response_text)
     else
       send_message(channel_id, "Access denied. Only @tech9.com users can interact with me.")
@@ -35,24 +36,6 @@ class Slack::EventsController < ApplicationController
     client.users_info(user: user_id).user.profile
   rescue
     nil
-  end
-
-  def fetch_gpt_response(text)
-    # Example using RestClient
-    response = RestClient.post(
-      'https://api.openai.com/v1/completions',
-      {
-        model: 'gpt-4',
-        prompt: text,
-        max_tokens: 150
-      }.to_json,
-      {
-        Authorization: "Bearer #{ENV['OPENAI_API_KEY']}",
-        content_type: :json,
-        accept: :json
-      }
-    )
-    JSON.parse(response.body)['choices'][0]['text'].strip
   end
 
   def send_message(channel_id, text)
