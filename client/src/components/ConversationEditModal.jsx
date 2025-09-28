@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Stack, Typography } from '@mui/material';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Stack,
+  Typography,
+} from '@mui/material';
 import { updateConversation } from '../utils/api';
 
 const ConversationEditModal = ({ open, onClose, conversation, onUpdated }) => {
@@ -22,7 +31,9 @@ const ConversationEditModal = ({ open, onClose, conversation, onUpdated }) => {
     }
     try {
       setSaving(true);
-      await updateConversation(conversation.id, { conversation: { title: title.trim() } });
+      await updateConversation(conversation.id, {
+        conversation: { title: title.trim() },
+      });
       onUpdated?.(conversation.id, title.trim());
       onClose();
     } catch (e) {
@@ -31,7 +42,6 @@ const ConversationEditModal = ({ open, onClose, conversation, onUpdated }) => {
       setSaving(false);
     }
   };
-
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
@@ -46,15 +56,25 @@ const ConversationEditModal = ({ open, onClose, conversation, onUpdated }) => {
             fullWidth
             size="small"
           />
-          {error && <Typography color="error" variant="caption">{error}</Typography>}
+          {error && (
+            <Typography color="error" variant="caption">
+              {error}
+            </Typography>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Stack direction="row" spacing={1} sx={{ ml: 'auto' }}>
-          <Button onClick={onClose} disabled={saving}>Cancel</Button>
-            <Button variant="contained" onClick={handleSave} disabled={saving || !title.trim()}>
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
+          <Button onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={saving || !title.trim()}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </Button>
         </Stack>
       </DialogActions>
     </Dialog>

@@ -56,12 +56,8 @@ export const uploadDocuments = (files, conversationId = null) => {
 
   if (conversationId) formData.append('conversation_id', conversationId);
 
-  let user = window.localStorage.getItem('tech9gpt_user');
-  user = user ? JSON.parse(user) : null;
-
   const headers = {};
   headers['Content-Type'] = 'multipart/form-data';
-  if (user?.token) headers['Authorization'] = user.token;
 
   return axios
     .post('/documents', formData, { headers })
@@ -83,6 +79,16 @@ export const fetchDocuments = (ids, conversationId = null) => {
       console.error('Failed to fetch documents:', error);
       throw error;
     });
+};
+
+export const updateDocumentFile = (id, file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return axios
+    .put(`/documents/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then((r) => r.data);
 };
 
 export const deleteDocument = (id) => {

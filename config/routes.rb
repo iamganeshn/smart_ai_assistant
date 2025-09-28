@@ -8,7 +8,7 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   # root "posts#index"
   post "chat", to: "chat#completion"
-  resources :documents, only: [ :create, :index, :show, :destroy ]
+  resources :documents, only: [ :create, :index, :show, :update, :destroy ]
   post "/google/callback", to: "sessions#google_callback"
   resources :conversations, only: [ :index, :show, :create, :update, :destroy ]
   post '/slack/events', to: 'slack/events#create'

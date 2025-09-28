@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -19,6 +19,15 @@ import {
   AppBar,
   Toolbar,
   IconButton,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Stack,
+  Avatar,
+  Tooltip,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -27,8 +36,18 @@ import {
   CheckCircle as CheckCircleIcon,
   Schedule as ClockIcon,
   Close as CloseIcon,
+  MoreVert as MoreVertIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
+import {
+  uploadDocuments,
+  fetchDocuments,
+  deleteDocument,
+  updateDocumentFile,
+} from '../utils/api';
 
 const UploadArea = styled(Box, {
   shouldForwardProp: (prop) => prop !== 'isDragging',
@@ -75,44 +94,67 @@ const StatusChip = styled(Chip, {
 export function DocumentUploadScreen({ onBack }) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null);
-  const [documents] = useState([
-    {
-      id: '1',
-      title: 'Employee Handbook 2024',
-      category: 'HR',
-      uploadedBy: 'Sarah Johnson',
-      uploadDate: new Date('2024-01-15'),
-      status: 'processed',
-      size: '2.4 MB',
-    },
-    {
-      id: '2',
-      title: 'Development Guidelines',
-      category: 'Engineering',
-      uploadedBy: 'Mike Chen',
-      uploadDate: new Date('2024-01-10'),
-      status: 'processed',
-      size: '1.8 MB',
-    },
-    {
-      id: '3',
-      title: 'Client Onboarding Process',
-      category: 'Sales',
-      uploadedBy: 'John Doe',
-      uploadDate: new Date('2024-01-12'),
-      status: 'pending',
-      size: '3.2 MB',
-    },
-    {
-      id: '4',
-      title: 'Security Policy Update',
-      category: 'IT',
-      uploadedBy: 'Lisa Wong',
-      uploadDate: new Date('2024-01-08'),
-      status: 'error',
-      size: '1.1 MB',
-    },
-  ]);
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [activeDoc, setActiveDoc] = useState(null);
+  const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [replacing, setReplacing] = useState(false);
+  const [newFile, setNewFile] = useState(null);
+
+  const loadDocuments = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await fetchDocuments();
+      setDocuments(data);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
+
+  // Poll processing docs
+  useEffect(() => {
+    const pending = documents.some(
+      (d) => d.status !== 'completed' && d.status !== 'failed'
+    );
+    if (!pending) return;
+    const interval = setInterval(loadDocuments, 5000);
+    return () => clearInterval(interval);
+  }, [documents, loadDocuments]);
+
+  const openMenu = (doc, e) => {
+    setActiveDoc(doc);
+    setMenuAnchor(e.currentTarget);
+  };
+  const closeMenu = () => {
+    setMenuAnchor(null);
+  };
+
+  const handleUpload = async (files) => {
+    if (!files.length) return;
+    setUploadProgress(0);
+    try {
+      const resp = await uploadDocuments(Array.from(files));
+      // quick optimistic merge
+      setDocuments((prev) => [...resp.created, ...prev]);
+    } catch (e) {
+      // swallow; could add alert
+    } finally {
+      setTimeout(() => setUploadProgress(null), 800);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const files = e.target.files;
+    if (files && files.length) {
+      handleUpload(files);
+    }
+  };
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -127,38 +169,45 @@ export function DocumentUploadScreen({ onBack }) {
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-
-    // Simulate file upload
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev === null) return 0;
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => setUploadProgress(null), 1000);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    if (e.dataTransfer.files?.length) handleUpload(e.dataTransfer.files);
   };
 
-  const handleFileSelect = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      // Simulate file upload
-      setUploadProgress(0);
-      const interval = setInterval(() => {
-        setUploadProgress((prev) => {
-          if (prev === null) return 0;
-          if (prev >= 100) {
-            clearInterval(interval);
-            setTimeout(() => setUploadProgress(null), 1000);
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 200);
+  const startReplace = () => {
+    setReplaceDialogOpen(true);
+    closeMenu();
+  };
+  const startDelete = () => {
+    setDeleteDialogOpen(true);
+    closeMenu();
+  };
+
+  const confirmDelete = async () => {
+    if (!activeDoc) return;
+    try {
+      await deleteDocument(activeDoc.id);
+      setDocuments((prev) => prev.filter((d) => d.id !== activeDoc.id));
+    } finally {
+      setDeleteDialogOpen(false);
+      setActiveDoc(null);
     }
+  };
+
+  const confirmReplace = async () => {
+    if (!activeDoc || !newFile) return;
+    try {
+      setReplacing(true);
+      await updateDocumentFile(activeDoc.id, newFile);
+      setReplaceDialogOpen(false);
+      setActiveDoc(null);
+      setNewFile(null);
+      loadDocuments();
+    } finally {
+      setReplacing(false);
+    }
+  };
+
+  const replaceInputChange = (e) => {
+    if (e.target.files?.[0]) setNewFile(e.target.files[0]);
   };
 
   const getStatusIcon = (status) => {
@@ -180,17 +229,13 @@ export function DocumentUploadScreen({ onBack }) {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {/* Upload Section */}
           <Card>
-            <CardHeader
-              title="Upload Documents"
-              subheader="Add documents to the Tech9 GPT knowledge base. Supported formats: PDF, DOC, DOCX, TXT"
-            />
             <CardContent>
               <UploadArea
                 isDragging={isDragging}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                onClick={() => document.getElementById('file-upload')?.click()}
+                // onClick={() => document.getElementById('file-upload')?.click()}
               >
                 {uploadProgress !== null ? (
                   <Box>
@@ -285,18 +330,31 @@ export function DocumentUploadScreen({ onBack }) {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Document</TableCell>
-                      <TableCell>Category</TableCell>
-                      <TableCell>Uploaded By</TableCell>
-                      <TableCell>Date</TableCell>
-                      <TableCell>Size</TableCell>
-                      <TableCell>Status</TableCell>
+                      <TableCell align="left">Document</TableCell>
+                      <TableCell align="center">Uploaded By</TableCell>
+                      <TableCell align="center">Date</TableCell>
+                      <TableCell align="center">Size</TableCell>
+                      <TableCell align="center">Type</TableCell>
+                      <TableCell align="center">Status</TableCell>
+                      <TableCell align="center">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
+                    {loading && (
+                      <TableRow>
+                        <TableCell colSpan={8}>Loading…</TableCell>
+                      </TableRow>
+                    )}
+                    {!loading && documents.length === 0 && (
+                      <TableRow>
+                        <TableCell align="center" colSpan={8}>
+                          No documents uploaded.
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {documents.map((doc) => (
                       <TableRow key={doc.id} hover>
-                        <TableCell>
+                        <TableCell align="center">
                           <Box
                             sx={{
                               display: 'flex',
@@ -305,46 +363,103 @@ export function DocumentUploadScreen({ onBack }) {
                             }}
                           >
                             <FileTextIcon color="action" />
-                            <Typography variant="body2">{doc.title}</Typography>
+                            <Typography variant="body2">
+                              {doc.file_name || doc.id}
+                            </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={doc.category}
-                            variant="outlined"
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell>
+                        <TableCell align="center">-</TableCell>
+                        <TableCell align="center">
                           <Typography variant="body2">
-                            {doc.uploadedBy}
+                            {doc.created_at
+                              ? new Date(doc.created_at).toLocaleDateString()
+                              : '-'}
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2">
-                            {doc.uploadDate.toLocaleDateString()}
+                          <Typography align="center" variant="body2">
+                            {doc.file_size || '-'}
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2">{doc.size}</Typography>
+                          <Typography align="center" variant="body2">
+                            {doc.file_type
+                              ? (
+                                  doc.file_type.split('/').pop() || ''
+                                ).toUpperCase()
+                              : '-'}
+                          </Typography>
                         </TableCell>
-                        <TableCell>
+                        <TableCell align="center">
                           <Box
                             sx={{
                               display: 'flex',
-                              alignItems: 'center',
+                              alignItems: 'center', // vertical alignment
+                              justifyContent: 'center', // horizontal alignment
                               gap: 1,
                             }}
                           >
-                            {getStatusIcon(doc.status)}
+                            {doc.status === 'completed' && (
+                              <CheckCircleIcon
+                                sx={{ color: 'success.main', fontSize: 16 }}
+                              />
+                            )}
+                            {doc.status !== 'completed' &&
+                              doc.status !== 'failed' && (
+                                <ClockIcon
+                                  sx={{ color: 'warning.main', fontSize: 16 }}
+                                />
+                              )}
+                            {doc.status === 'failed' && (
+                              <CloseIcon
+                                sx={{ color: 'error.main', fontSize: 16 }}
+                              />
+                            )}
                             <StatusChip
                               label={
                                 doc.status.charAt(0).toUpperCase() +
                                 doc.status.slice(1)
                               }
-                              status={doc.status}
+                              status={
+                                doc.status === 'completed'
+                                  ? 'processed'
+                                  : doc.status === 'failed'
+                                  ? 'error'
+                                  : 'pending'
+                              }
                               size="small"
                             />
+                          </Box>
+                        </TableCell>
+                        <TableCell align="center">
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              gap: 1,
+                              alignItems: 'center', // vertical alignment
+                              justifyContent: 'center', // horizontal alignment
+                            }}
+                          >
+                            {doc.file_url && (
+                              <Tooltip title="Download">
+                                <IconButton
+                                  size="small"
+                                  component="a"
+                                  href={doc.file_url}
+                                  target="_blank"
+                                  rel="noopener"
+                                  download
+                                >
+                                  <DownloadIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            <IconButton
+                              size="small"
+                              onClick={(e) => openMenu(doc, e)}
+                            >
+                              <MoreVertIcon fontSize="small" />
+                            </IconButton>
                           </Box>
                         </TableCell>
                       </TableRow>
@@ -355,6 +470,74 @@ export function DocumentUploadScreen({ onBack }) {
             </CardContent>
           </Card>
         </Box>
+        <Menu
+          anchorEl={menuAnchor}
+          open={Boolean(menuAnchor)}
+          onClose={closeMenu}
+        >
+          <MenuItem onClick={startReplace}>
+            <EditIcon fontSize="small" sx={{ mr: 1 }} />
+            Replace File
+          </MenuItem>
+          <MenuItem onClick={startDelete}>
+            <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+            Delete
+          </MenuItem>
+        </Menu>
+        <Dialog
+          open={replaceDialogOpen}
+          onClose={() => setReplaceDialogOpen(false)}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle>Replace Document</DialogTitle>
+          <DialogContent>
+            <Button variant="outlined" component="label" size="small">
+              Choose New File
+              <input type="file" hidden onChange={replaceInputChange} />
+            </Button>
+            {newFile && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                {newFile.name}
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setReplaceDialogOpen(false);
+                setNewFile(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              disabled={!newFile || replacing}
+              onClick={confirmReplace}
+            >
+              {replacing ? 'Replacing…' : 'Replace'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle>Delete Document</DialogTitle>
+          <DialogContent>
+            Are you sure you want to delete "
+            {activeDoc?.file_name || activeDoc?.id}"?
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button color="error" variant="contained" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </Box>
   );
