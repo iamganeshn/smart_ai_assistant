@@ -50,7 +50,6 @@ class SlackChatService
         store: false
       }
     )
-    debugger
     resp.dig("output", 0, "content", 0, "text") || ""
   rescue => e
     Rails.logger.error("AI response failed: #{e.message}")
