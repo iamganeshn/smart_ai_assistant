@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -9,18 +9,23 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemButton,
   Box,
   Button,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import MenuIcon from '@mui/icons-material/Menu';
+import AddIcon from '@mui/icons-material/Add';
+import { useConversationContext } from './contexts/ConversationContext';
 
 const drawerWidth = 300;
 
 export default function AppLayout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { conversations, loading } = useConversationContext();
 
   const [drawerOpen, setDrawerOpen] = useState(true);
 
@@ -35,12 +40,16 @@ export default function AppLayout({ children }) {
     ? 'team'
     : 'conversations';
 
-  // Dummy conversation list
-  const conversations = [
-    { id: 1, name: 'General' },
-    { id: 2, name: 'Team Updates' },
-    { id: 3, name: 'Project X' },
-  ];
+  // Get current conversation ID from URL
+  const conversationId = location.pathname.match(/\/chat\/(.+)/)?.[1];
+
+  const handleNewConversation = () => {
+    navigate('/chat');
+  };
+
+  const handleConversationClick = (id) => {
+    navigate(`/chat/${id}`);
+  };
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -122,14 +131,66 @@ export default function AppLayout({ children }) {
         >
           <Toolbar />
           <Divider />
-          <List>
-            {conversations.map((conv) => (
-              <ListItem button key={conv.id}>
-                {drawerOpen && <ListItemText primary={conv.name} />}
-                <Divider />
-              </ListItem>
-            ))}
-          </List>
+
+          {/* New Conversation Button */}
+          <Box sx={{ p: 2 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={handleNewConversation}
+              sx={{ display: drawerOpen ? 'flex' : 'none' }}
+            >
+              New Chat
+            </Button>
+            {!drawerOpen && (
+              <IconButton
+                onClick={handleNewConversation}
+                sx={{ width: '100%' }}
+              >
+                <AddIcon />
+              </IconButton>
+            )}
+          </Box>
+
+          <Divider />
+
+          {/* Conversations List */}
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : (
+            <List>
+              {conversations.map((conv) => (
+                <ListItemButton
+                  key={conv.id}
+                  selected={conversationId === conv.id.toString()}
+                  onClick={() => handleConversationClick(conv.id)}
+                  sx={{
+                    minHeight: 48,
+                    justifyContent: drawerOpen ? 'initial' : 'center',
+                    px: 2.5,
+                  }}
+                >
+                  {drawerOpen && (
+                    <ListItemText
+                      primary={conv.title}
+                      sx={{
+                        'opacity': drawerOpen ? 1 : 0,
+                        '& .MuiListItemText-primary': {
+                          fontSize: '0.875rem',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        },
+                      }}
+                    />
+                  )}
+                </ListItemButton>
+              ))}
+            </List>
+          )}
         </Drawer>
       )}
 
@@ -139,6 +200,8 @@ export default function AppLayout({ children }) {
         sx={{
           flexGrow: 1,
           p: 3,
+          transition: 'margin-left 0.3s, width 0.3s',
+          width: `calc(100vw - ${drawerWidth}px)`,
         }}
       >
         {children}

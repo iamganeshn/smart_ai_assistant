@@ -38,7 +38,6 @@ class Document < ApplicationRecord
       start_idx += (config[:chunk_size] - config[:overlap_size])
       order += 1
     end
-
   end
 
   private

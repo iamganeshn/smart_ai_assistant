@@ -18,6 +18,7 @@ import { EmployeeProjectScreen } from './components/EmployeeProjectScreen';
 import Notification from './utils/Notification';
 
 import AppLayout from './AppLayout';
+import { ConversationProvider } from './contexts/ConversationContext';
 
 import { useGoogleLoginHook } from './hooks/useGoogleLoginHook';
 import { useAuth } from './hooks/useAuth';
@@ -112,34 +113,47 @@ export default function App() {
           }}
         />
       ) : (
-        <AppLayout>
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <ChatScreen
-                  // Todo: change isAdmin based on actual user role
-                  isAdmin={true}
-                  onLogout={() => logout()}
-                />
-              }
-            />
-            <Route
-              path="/sign_in"
-              element={
-                <LoginScreen
-                  onLogin={() => {
-                    handleBackdropOpen();
-                    googleLogin();
-                  }}
-                />
-              }
-            />
-            <Route path="/documents" element={<DocumentUploadScreen />} />
-            <Route path="/employees" element={<EmployeeProjectScreen />} />
-            <Route path="*" element={<Navigate to="/chat" />} />
-          </Routes>
-        </AppLayout>
+        <ConversationProvider>
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<Navigate to="/chat" />} />
+              <Route
+                path="/chat"
+                element={
+                  <ChatScreen
+                    // Todo: change isAdmin based on actual user role
+                    isAdmin={true}
+                    onLogout={() => logout()}
+                  />
+                }
+              />
+              <Route
+                path="/chat/:conversationId"
+                element={
+                  <ChatScreen
+                    // Todo: change isAdmin based on actual user role
+                    isAdmin={true}
+                    onLogout={() => logout()}
+                  />
+                }
+              />
+              <Route
+                path="/sign_in"
+                element={
+                  <LoginScreen
+                    onLogin={() => {
+                      handleBackdropOpen();
+                      googleLogin();
+                    }}
+                  />
+                }
+              />
+              <Route path="/documents" element={<DocumentUploadScreen />} />
+              <Route path="/employees" element={<EmployeeProjectScreen />} />
+              <Route path="*" element={<Navigate to="/chat" />} />
+            </Routes>
+          </AppLayout>
+        </ConversationProvider>
       )}
       <Backdrop
         sx={(theme) => ({

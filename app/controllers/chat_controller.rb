@@ -19,10 +19,14 @@ class ChatController < ApplicationController
       content = { content: text }.to_json
       response.stream.write("data: #{content}\n\n")
     end
-    # Stream conversation title at the end
-    if service.conversation&.title.present?
-      title_content = { conversation_title: service.conversation.title }.to_json
-      response.stream.write("data: #{title_content}\n\n")
+
+    # Stream conversation metadata at the end
+    if service.conversation
+      metadata = {
+        conversation_id: service.conversation.id,
+        conversation_title: service.conversation.title
+      }.to_json
+      response.stream.write("data: #{metadata}\n\n")
     end
   rescue => e
     Rails.logger.error("Streaming error: #{e.message}")
@@ -32,6 +36,6 @@ class ChatController < ApplicationController
 
   def current_user
     # Todo: Replace with actual authentication logic
-    User.last
+    User.first
   end
 end

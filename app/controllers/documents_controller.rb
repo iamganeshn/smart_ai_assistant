@@ -1,6 +1,6 @@
 # app/controllers/documents_controller.rb
 class DocumentsController < ApplicationController
-  before_action :set_document, only: [:show, :update, :destroy]
+  before_action :set_document, only: [ :show, :update, :destroy ]
 
   def index
     documents =
@@ -62,7 +62,7 @@ class DocumentsController < ApplicationController
 
   def document_response(document)
     file = document.file
-    document.as_json(only: [:id, :status, :conversation_id]).merge(
+    document.as_json(only: [ :id, :status, :conversation_id ]).merge(
       file_url: file.attached? ? url_for(file) : nil,
       file_name: file.attached? ? file.filename.to_s : nil,
       file_size: file.attached? ? "#{file.byte_size/1000} Kb" : nil,

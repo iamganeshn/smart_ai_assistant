@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -13,9 +13,11 @@ import {
   Paper,
   Chip,
   Stack,
+  CircularProgress,
 } from '@mui/material';
 
 import Notification from '../utils/Notification';
+import { useConversationContext } from '../contexts/ConversationContext';
 
 import {
   Send as SendIcon,
@@ -28,23 +30,51 @@ import {
 import * as API from '../utils/api';
 
 const ChatScreen = (props) => {
+  const { conversationId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState([
-    {
-      id: '1',
-      content:
-        "Hello! I'm Tech9 GPT, your internal AI assistant. Ask me anything or upload documents for analysis.",
-      role: 'assistant',
-      timestamp: new Date(),
-    },
-  ]);
+
+  const {
+    currentConversation,
+    fetchConversation,
+    clearCurrentConversation,
+    addNewConversation,
+    updateConversationTitle,
+  } = useConversationContext();
+
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [alert, setAlert] = useState({ message: '', type: '' });
 
   const [input, setInput] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+
+  // Load conversation when conversationId changes
+  useEffect(() => {
+    if (conversationId) {
+      fetchConversation(conversationId);
+    } else {
+      // New conversation - clear current conversation and show welcome message
+      clearCurrentConversation();
+      setMessages([
+        {
+          id: 'welcome',
+          content:
+            "Hello! I'm Tech9 GPT, your internal AI assistant. Ask me anything or upload documents for analysis.",
+          role: 'assistant',
+        },
+      ]);
+    }
+  }, [conversationId, fetchConversation, clearCurrentConversation]);
+
+  // Update messages when current conversation changes
+  useEffect(() => {
+    if (currentConversation?.messages) {
+      setMessages(currentConversation.messages);
+    }
+  }, [currentConversation]);
 
   useEffect(() => {
     if (location.state?.alert) {
@@ -75,58 +105,107 @@ const ChatScreen = (props) => {
     if (!input.trim()) return;
 
     const userMessage = {
-      id: `user_msg-${(Date.now() + 1).toString()}`,
+      id: `user_msg-${Date.now()}`,
       content: input || `Uploaded ${attachedFiles.length} file(s)`,
       role: 'user',
-      timestamp: new Date(),
       attachedFiles,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    setIsLoading(true);
 
     // Create empty AI message for streaming
     const aiMessage = {
-      id: `assistant-msg-${(Date.now() + 1).toString()}`,
+      id: `assistant-msg-${Date.now()}`,
       content: 'Typing...',
       role: 'assistant',
-      timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, aiMessage]);
 
-    const response = await API.chat(userMessage.content);
-    // Stream response
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder('utf-8');
-    let fullContent = '';
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
+    try {
+      const response = await API.chat(userMessage.content, conversationId);
 
-      const chunk = decoder.decode(value);
+      // Stream response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let fullContent = '';
+      let newConversationId = null;
+      let conversationTitle = null;
 
-      const lines = chunk.split('\n');
-      console.log('Received chunk:', chunk);
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          let data = line.slice(6);
-          if (data === '[DONE]') continue;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
-          data = JSON.parse(data);
-          console.log('Parsed data:', data['content']);
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
 
-          if (data['content']) {
-            fullContent += data['content'];
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            let data = line.slice(6);
+            if (data === '[DONE]') continue;
 
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === aiMessage.id ? { ...msg, content: fullContent } : msg
-              )
-            );
+            try {
+              data = JSON.parse(data);
+
+              if (data.content) {
+                fullContent += data.content;
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === aiMessage.id
+                      ? { ...msg, content: fullContent }
+                      : msg
+                  )
+                );
+              }
+
+              // Handle conversation metadata
+              if (data.conversation_id) {
+                newConversationId = data.conversation_id;
+              }
+              if (data.conversation_title) {
+                conversationTitle = data.conversation_title;
+              }
+            } catch (parseError) {
+              console.error('Error parsing SSE data:', parseError);
+            }
           }
         }
       }
+
+      // Handle new conversation creation
+      if (!conversationId && newConversationId) {
+        // Redirect to the new conversation URL
+        navigate(`/chat/${newConversationId}`, { replace: true });
+
+        // Add to conversations list
+        if (conversationTitle) {
+          addNewConversation({
+            id: newConversationId,
+            title: conversationTitle,
+            messages: [...messages, { ...aiMessage, content: fullContent }],
+          });
+        }
+      } else if (conversationId && conversationTitle) {
+        // Update existing conversation title if it changed
+        updateConversationTitle(conversationId, conversationTitle);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setAlert({
+        message: 'Failed to send message. Please try again.',
+        type: 'error',
+      });
+
+      // Remove the failed messages
+      setMessages((prev) =>
+        prev.filter(
+          (msg) => msg.id !== userMessage.id && msg.id !== aiMessage.id
+        )
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -206,14 +285,6 @@ const ChatScreen = (props) => {
                     ))}
                   </Stack>
                 )}
-
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ mt: 0.2, display: 'block', textAlign: 'right' }}
-                >
-                  {message.timestamp.toLocaleTimeString()}
-                </Typography>
               </CardContent>
             </Card>
 
@@ -278,9 +349,13 @@ const ChatScreen = (props) => {
           color="primary"
           sx={{ borderRadius: 3, minWidth: '48px', minHeight: '48px' }}
           onClick={handleSend}
-          disabled={!input.trim() && attachedFiles.length === 0}
+          disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
         >
-          <SendIcon />
+          {isLoading ? (
+            <CircularProgress size={20} color="inherit" />
+          ) : (
+            <SendIcon />
+          )}
         </Button>
       </Paper>
 

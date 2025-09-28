@@ -9,7 +9,6 @@ gem "pg", "~> 1.1"
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", ">= 5.0"
 # Build JSON APIs with ease [https://github.com/rails/jbuilder]
-# gem "jbuilder"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem "bcrypt", "~> 3.1.7"
@@ -26,6 +25,7 @@ gem "mission_control-jobs" # provides a Rails-based frontend to Active Job adapt
 gem "solid_cable"
 gem "rest-client", "~> 2.1"
 gem "jwt", "~> 3.1.2"
+gem "jbuilder", "~> 2.14.1"
 
 # Propshaft is an asset pipeline library for Rails
 gem "propshaft" # UI was not working after adding mission_control, so it suggested this one.

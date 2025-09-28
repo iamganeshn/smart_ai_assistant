@@ -1,6 +1,6 @@
 # app/services/chat_completion_service.rb
 class ChatCompletionService
-  attr_accessor :conversation, :user_id, :query, :stream, :client, :messages, :tool_result, :embedding_config
+  attr_accessor :conversation, :user_id, :query, :stream, :client, :messages, :tool_result, :embedding_config, :user_message, :assistant_response
 
   def initialize(conversation_id:, user_id:, query:, stream: false)
     @client = openai_client
@@ -11,16 +11,26 @@ class ChatCompletionService
     @conversation = Conversation.find_by(id: conversation_id)
 
     @query = query
-    @messages = [
-      { role: "user", content: query }
-    ]
+
     unless @conversation
       title = get_initial_title
       conversation = @user.conversations.build(title: title)
       conversation.save!
       @conversation = conversation
     end
+
+    # Load previous messages for context and add current query
+    @messages = load_conversation_messages
+    @messages << { role: "user", content: query }
+
+    # Create user message
+    @user_message = @conversation.messages.create!(
+      role: "user",
+      content: @query
+    )
+
     @tool_result = false
+    @assistant_response = ""
   end
 
   def call(&stream_writer)
@@ -28,6 +38,11 @@ class ChatCompletionService
     context = build_context_from_embedding(embedding)
     stream_ai_response(context, &stream_writer)
     continue_with_tool_result(context, &stream_writer) if @tool_result
+
+    # Create assistant message after response is complete
+    create_assistant_message
+
+    @conversation
   end
 
   private
@@ -46,7 +61,7 @@ class ChatCompletionService
   end
 
   def stream_ai_response(context, &stream_writer)
-    resp = @client.responses.create(
+    @client.responses.create(
       parameters: {
         model: embedding_config[:chat_model],
         instructions: build_instructions(context),
@@ -78,7 +93,9 @@ class ChatCompletionService
   def handle_chunk(chunk, &stream_writer)
     case chunk["type"]
     when "response.output_text.delta"
-      stream_writer.call(chunk["delta"]) if stream_writer
+      delta_text = chunk["delta"]
+      @assistant_response += delta_text if delta_text
+      stream_writer.call(delta_text) if stream_writer
     when "response.completed"
       Rails.logger.info("Response usage: #{chunk.dig('response', 'usage')}")
     when "response.output_item.done"
@@ -103,6 +120,23 @@ class ChatCompletionService
       #{context}
     PROMPT
   end
+
+  def create_assistant_message
+    return if @assistant_response.blank?
+
+    @conversation.messages.create!(
+      role: "assistant",
+      content: @assistant_response.strip
+    )
+  end
+
+  def load_conversation_messages
+    return [] unless @conversation&.persisted?
+
+    @conversation.messages.order(:created_at).limit(10).map do |message|
+      { role: message.role, content: message.content }
+    end
+  end
   # Todo: implement actual tool actions later
   def create_contact_tool
     {
@@ -116,7 +150,7 @@ class ChatCompletionService
           "mobile" => { "type" => "string" },
           "email" => { "type" => "string" }
         },
-        "required" => ["mobile", "email"]
+        "required" => [ "mobile", "email" ]
       }
     }
   end
@@ -132,7 +166,7 @@ class ChatCompletionService
         input: [
           { role: "user", content: "#{query}" }
         ],
-        store: false,
+        store: false
       }
     )
     resp.dig("output", 0, "content", 0, "text")&.strip
