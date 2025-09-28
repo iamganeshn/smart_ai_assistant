@@ -3,12 +3,16 @@ class DocumentsController < ApplicationController
   before_action :set_document, only: [ :show, :update, :destroy ]
 
   def index
-    documents =
-      if params[:conversation_id].present?
-        Document.where(conversation_id: params[:conversation_id])
-      else
-        Document.where(conversation_id: nil) # global docs (admin uploaded)
-      end
+    documents = Document.all
+    if params[:conversation_id].present?
+      documents = documents.where(conversation_id: params[:conversation_id])
+    else
+      documents = documents.where(conversation_id: nil) # global docs (admin uploaded)
+    end
+    if params[:ids].present?
+      ids = params[:ids].split(",").map(&:strip)
+      documents = documents.where(id: ids)
+    end
 
     render json: documents.map { |d| document_response(d) }
   end

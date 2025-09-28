@@ -12,11 +12,10 @@ class ChatCompletionService
 
     @query = query
 
-    unless @conversation
-      title = get_initial_title
-      conversation = @user.conversations.build(title: title)
-      conversation.save!
-      @conversation = conversation
+    if @conversation.title == "New Conversation"
+      truncated_title = @query.length > 16 ? @query[0..16] + "..." : @query
+      @conversation.title = truncated_title
+      @conversation.save!
     end
 
     # Load previous messages for context and add current query
@@ -45,8 +44,6 @@ class ChatCompletionService
     @conversation
   end
 
-  private
-
   def fetch_embedding
     @client.embeddings(
       parameters: {
@@ -57,7 +54,11 @@ class ChatCompletionService
   end
 
   def build_context_from_embedding(embedding)
-    DocumentChunk.find_similar(embedding).map(&:text).join("\n\n")
+    DocumentChunk.joins(:document)
+      .where(documents: { conversation_id: [@conversation.id, nil] })
+      .find_similar(embedding)
+      .map(&:text)
+      .join("\n\n")
   end
 
   def stream_ai_response(context, &stream_writer)
@@ -153,23 +154,6 @@ class ChatCompletionService
         "required" => [ "mobile", "email" ]
       }
     }
-  end
-
-  def get_initial_title
-    resp = client.responses.create(
-      parameters: {
-        model: embedding_config[:chat_model],
-        instructions: <<~INSTR,
-          You are an assistant that generates a concise, clear, and relevant title
-          for a conversation. Keep it short (3-7 words), capturing the main topic.
-        INSTR
-        input: [
-          { role: "user", content: "#{query}" }
-        ],
-        store: false
-      }
-    )
-    resp.dig("output", 0, "content", 0, "text")&.strip
   end
 
   private

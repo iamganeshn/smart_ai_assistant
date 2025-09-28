@@ -13,8 +13,9 @@ import {
   Paper,
   Chip,
   Stack,
-  CircularProgress,
+  Tooltip,
 } from '@mui/material';
+import { Backdrop, CircularProgress } from '@mui/material';
 
 import Notification from '../utils/Notification';
 import { useConversationContext } from '../contexts/ConversationContext';
@@ -45,36 +46,67 @@ const ChatScreen = (props) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [alert, setAlert] = useState({ message: '', type: '' });
-
   const [input, setInput] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [conversationDocuments, setConversationDocuments] = useState([]);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Load conversation when conversationId changes
   useEffect(() => {
-    if (conversationId) {
-      fetchConversation(conversationId);
-    } else {
-      // New conversation - clear current conversation and show welcome message
-      clearCurrentConversation();
-      setMessages([
-        {
-          id: 'welcome',
-          content:
-            "Hello! I'm Tech9 GPT, your internal AI assistant. Ask me anything or upload documents for analysis.",
-          role: 'assistant',
-        },
-      ]);
-    }
-  }, [conversationId, fetchConversation, clearCurrentConversation]);
+    // Check if any doc is still processing
+    const hasPending = conversationDocuments.some(
+      (doc) => doc.status !== 'completed'
+    );
+    if (!hasPending) return; // stop polling if nothing pending
+
+    const interval = setInterval(async () => {
+      try {
+        const updated = await API.fetchDocuments(
+          conversationDocuments.map((d) => d.id),
+          conversationId
+        );
+        // merge updated statuses into local state
+        setConversationDocuments((prev) =>
+          prev.map((doc) => updated.find((u) => u.id === doc.id) || doc)
+        );
+      } catch (err) {
+        console.error('Polling failed', err);
+      }
+    }, 3000); // every 3s
+
+    return () => clearInterval(interval); // cleanup
+  }, [conversationDocuments, conversationId]);
+
+  useEffect(() => {
+    const ensureConversation = async () => {
+      if (!conversationId) {
+        const resp = await API.createConversation();
+        console.log('Created new conversation', resp.data);
+        clearCurrentConversation();
+        navigate(`/chat/${resp.data.data.id}`, { replace: true });
+        addNewConversation({
+          id: resp.data.data.id,
+          title: resp.data.data.title,
+          messages: [],
+        });
+      } else {
+        fetchConversation(conversationId);
+      }
+    };
+    ensureConversation();
+  }, [conversationId, navigate, fetchConversation]);
 
   // Update messages when current conversation changes
   useEffect(() => {
     if (currentConversation?.messages) {
-      setMessages(currentConversation.messages);
+      setMessages(currentConversation?.messages || []);
     }
-  }, [currentConversation]);
+    if (currentConversation?.documents) {
+      setConversationDocuments(currentConversation?.documents || []);
+    }
+  }, [currentConversation?.messages, currentConversation?.documents]);
 
   useEffect(() => {
     if (location.state?.alert) {
@@ -91,24 +123,53 @@ const ChatScreen = (props) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files || []);
-    setAttachedFiles((prev) => [...prev, ...files]);
+    if (!files.length) return;
     if (fileInputRef.current) fileInputRef.current.value = '';
+    try {
+      setUploadingDocs(true);
+      const uploadResp = await API.uploadDocuments(files, conversationId);
+      if (uploadResp.failed?.length) {
+        throw new Error(
+          uploadResp.failed
+            .map((f) => `${f.file}: ${f.errors.join(',')}`)
+            .join('; ')
+        );
+      }
+      // Merge new docs
+      setConversationDocuments((prev) => [...prev, ...uploadResp.created]);
+      setAlert({ message: 'Documents uploaded', type: 'success' });
+    } catch (err) {
+      setAlert({
+        message: err.message || 'Failed to upload documents',
+        type: 'error',
+      });
+    } finally {
+      setUploadingDocs(false);
+    }
   };
 
-  const removeAttachedFile = (index) => {
-    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  const handleDeleteDocument = async (docId) => {
+    try {
+      await API.deleteDocument(docId);
+      setConversationDocuments((prev) => prev.filter((d) => d.id !== docId));
+      setAlert({ message: 'Document removed', type: 'success' });
+    } catch (err) {
+      setAlert({
+        message: err.message || 'Failed to delete document',
+        type: 'error',
+      });
+    }
   };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim()) return; // documents are optional; only send if text present
 
     const userMessage = {
       id: `user_msg-${Date.now()}`,
-      content: input || `Uploaded ${attachedFiles.length} file(s)`,
+      content: input,
       role: 'user',
-      attachedFiles,
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -142,67 +203,38 @@ const ChatScreen = (props) => {
         const lines = chunk.split('\n');
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            let data = line.slice(6);
-            if (data === '[DONE]') continue;
-
-            try {
-              data = JSON.parse(data);
-
-              if (data.content) {
-                fullContent += data.content;
-                setMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === aiMessage.id
-                      ? { ...msg, content: fullContent }
-                      : msg
-                  )
-                );
-              }
-
-              // Handle conversation metadata
-              if (data.conversation_id) {
-                newConversationId = data.conversation_id;
-              }
-              if (data.conversation_title) {
-                conversationTitle = data.conversation_title;
-              }
-            } catch (parseError) {
-              console.error('Error parsing SSE data:', parseError);
+          if (!line.startsWith('data: ')) continue;
+          let data = line.slice(6);
+          if (!data) continue;
+          try {
+            data = JSON.parse(data);
+            if (data.content) {
+              fullContent += data.content;
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === aiMessage.id ? { ...m, content: fullContent } : m
+                )
+              );
             }
+            if (data.conversation_id) newConversationId = data.conversation_id;
+            if (data.conversation_title)
+              conversationTitle = data.conversation_title;
+          } catch {
+            console.error('Failed to parse stream data', data);
           }
         }
       }
-
-      // Handle new conversation creation
-      if (!conversationId && newConversationId) {
-        // Redirect to the new conversation URL
-        navigate(`/chat/${newConversationId}`, { replace: true });
-
-        // Add to conversations list
-        if (conversationTitle) {
-          addNewConversation({
-            id: newConversationId,
-            title: conversationTitle,
-            messages: [...messages, { ...aiMessage, content: fullContent }],
-          });
-        }
-      } else if (conversationId && conversationTitle) {
-        // Update existing conversation title if it changed
-        updateConversationTitle(conversationId, conversationTitle);
+      // Add to conversations list
+      if (
+        conversationTitle &&
+        currentConversation?.title === 'New Conversation'
+      ) {
+        updateConversationTitle(newConversationId, conversationTitle);
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      setAlert({
-        message: 'Failed to send message. Please try again.',
-        type: 'error',
-      });
-
-      // Remove the failed messages
+      setAlert({ message: 'Failed to send message', type: 'error' });
       setMessages((prev) =>
-        prev.filter(
-          (msg) => msg.id !== userMessage.id && msg.id !== aiMessage.id
-        )
+        prev.filter((m) => m.id !== userMessage.id && m.id !== aiMessage.id)
       );
     } finally {
       setIsLoading(false);
@@ -349,7 +381,7 @@ const ChatScreen = (props) => {
           color="primary"
           sx={{ borderRadius: 3, minWidth: '48px', minHeight: '48px' }}
           onClick={handleSend}
-          disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
+          disabled={!input.trim() || isLoading}
         >
           {isLoading ? (
             <CircularProgress size={20} color="inherit" />
@@ -359,20 +391,51 @@ const ChatScreen = (props) => {
         </Button>
       </Paper>
 
-      {/* Attached files preview */}
-      {attachedFiles.length > 0 && (
-        <Stack direction="row" spacing={1} flexWrap="wrap" px={2} pt={1}>
-          {attachedFiles.map((file, idx) => (
-            <Chip
-              key={idx}
-              label={file.name}
-              onDelete={() => removeAttachedFile(idx)}
-              size="small"
-              sx={{ bgcolor: 'grey.200' }}
-            />
+      {/* Attached (persisted) documents bar */}
+      {conversationDocuments.length > 0 && (
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          px={2}
+          pt={1}
+          alignItems="center"
+        >
+          {conversationDocuments.map((doc) => (
+            <Tooltip
+              title={
+                doc.status === 'completed'
+                  ? 'Ready to use'
+                  : 'Still processing, might take a few seconds'
+              }
+              arrow
+            >
+              <Chip
+                key={doc.id}
+                label={doc.file_name || `Doc ${doc.id}`}
+                onDelete={() => handleDeleteDocument(doc.id)}
+                size="small"
+                variant="outlined"
+                sx={{
+                  bgcolor:
+                    doc.status === 'completed'
+                      ? 'success.light'
+                      : 'warning.light',
+                }}
+              />
+            </Tooltip>
           ))}
         </Stack>
       )}
+      <Backdrop
+        sx={(theme) => ({
+          color: '#fff',
+          zIndex: theme.zIndex.drawer + 1,
+        })}
+        open={uploadingDocs}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </Box>
   );
 };

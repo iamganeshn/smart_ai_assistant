@@ -23,7 +23,7 @@ export const useConversations = () => {
       setCurrentConversation(null);
       return;
     }
-    
+
     try {
       setLoading(true);
       const response = await getConversation(id);
@@ -41,20 +41,21 @@ export const useConversations = () => {
   }, []);
 
   const addNewConversation = useCallback((conversation) => {
-    setConversations(prev => [conversation, ...prev]);
+    setConversations((prev) => [conversation, ...prev]);
     setCurrentConversation(conversation);
   }, []);
 
-  const updateConversationTitle = useCallback((id, title) => {
-    setConversations(prev => 
-      prev.map(conv => 
-        conv.id === id ? { ...conv, title } : conv
-      )
-    );
-    if (currentConversation?.id === id) {
-      setCurrentConversation(prev => ({ ...prev, title }));
-    }
-  }, [currentConversation?.id]);
+  const updateConversationTitle = useCallback(
+    (id, title) => {
+      setConversations((prev) =>
+        prev.map((conv) => (conv.id === id ? { ...conv, title } : conv))
+      );
+      if (currentConversation?.id === id) {
+        setCurrentConversation((prev) => ({ ...prev, title }));
+      }
+    },
+    [currentConversation?.id]
+  );
 
   useEffect(() => {
     fetchConversations();

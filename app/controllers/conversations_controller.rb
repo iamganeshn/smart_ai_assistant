@@ -7,6 +7,12 @@ class ConversationsController < ApplicationController
     @conversation = current_user.conversations.find(params[:id])
   end
 
+  def create
+    # Temporary title, can be regenerated after first AI response
+    @conversation = current_user.conversations.create!(title: params[:title].presence || "New Conversation")
+    render :show, status: :created
+  end
+
   def update
     @conversation = current_user.conversations.find(params[:id])
     if @conversation.update(conversation_params)
