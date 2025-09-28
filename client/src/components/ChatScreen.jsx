@@ -75,7 +75,7 @@ const ChatScreen = (props) => {
     if (!input.trim()) return;
 
     const userMessage = {
-      id: `msg-${(Date.now() + 1).toString()}`,
+      id: `user_msg-${(Date.now() + 1).toString()}`,
       content: input || `Uploaded ${attachedFiles.length} file(s)`,
       role: 'user',
       timestamp: new Date(),
@@ -87,7 +87,7 @@ const ChatScreen = (props) => {
 
     // Create empty AI message for streaming
     const aiMessage = {
-      id: `msg-${(Date.now() + 1).toString()}`,
+      id: `assistant-msg-${(Date.now() + 1).toString()}`,
       content: 'Typing...',
       role: 'assistant',
       timestamp: new Date(),
