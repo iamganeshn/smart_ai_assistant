@@ -14,10 +14,12 @@ class Slack::EventsController < ApplicationController
     user_id = event['user']
     channel_id = event['channel']
 
-    email = fetch_user_email(user_id)
-
-    if email&.end_with?('@tech9.com')
-      response_text = fetch_gpt_response(event['text'])
+    profile = fetch_user_profile(user_id)
+    Rails.logger.info("User profile: #{profile.inspect}")
+    # Todo: Update Restricting to only tech9.com users for now after testing
+    unless profile&.email&.end_with?('@tech9.com')
+      # response_text = fetch_gpt_response(event['text'])
+      response_text = "Hello How can I help you."
       send_message(channel_id, response_text)
     else
       send_message(channel_id, "Access denied. Only @tech9.com users can interact with me.")
@@ -28,9 +30,9 @@ class Slack::EventsController < ApplicationController
 
   private
 
-  def fetch_user_email(user_id)
+  def fetch_user_profile(user_id)
     client = Slack::Web::Client.new
-    client.users_info(user: user_id).user.profile.email
+    client.users_info(user: user_id).user.profile
   rescue
     nil
   end
