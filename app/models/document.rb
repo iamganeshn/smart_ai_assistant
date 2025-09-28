@@ -7,7 +7,7 @@ class Document < ApplicationRecord
 
   after_commit :create_chunks_async, on: [ :create, :update ], if: :file_changed?
 
-  enum :status, { uploaded: 0, extracted: 1, embedding: 2, completed: 3, failed: 4 }
+  enum :status, { processing: 0, extracted: 1, embedding: 2, completed: 3, failed: 4 }
 
   def create_chunks
     # Delete old chunks on update

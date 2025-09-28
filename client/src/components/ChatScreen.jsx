@@ -37,11 +37,13 @@ const ChatScreen = (props) => {
   const navigate = useNavigate();
 
   const {
+    conversations,
     currentConversation,
     fetchConversation,
     clearCurrentConversation,
     addNewConversation,
     updateConversationTitle,
+    loading,
   } = useConversationContext();
 
   const [messages, setMessages] = useState([]);
@@ -80,24 +82,72 @@ const ChatScreen = (props) => {
     return () => clearInterval(interval); // cleanup
   }, [conversationDocuments, conversationId]);
 
+  // Track whether we've already auto-created or consumed the startNew state to prevent loops
+  const creationRef = useRef(false);
+  const startNewConsumedRef = useRef(false);
+
+  // Effect 1: fetch when explicit conversation id changes
   useEffect(() => {
-    const ensureConversation = async () => {
-      if (!conversationId) {
-        const resp = await API.createConversation();
-        console.log('Created new conversation', resp.data);
-        clearCurrentConversation();
-        navigate(`/chat/${resp.data.data.id}`, { replace: true });
-        addNewConversation({
-          id: resp.data.data.id,
-          title: resp.data.data.title,
-          messages: [],
-        });
-      } else {
-        fetchConversation(conversationId);
-      }
-    };
-    ensureConversation();
-  }, [conversationId, navigate, fetchConversation]);
+    if (conversationId) {
+      fetchConversation(conversationId);
+    }
+  }, [conversationId, fetchConversation]);
+
+  // Effect 2: handle routing / creation when no conversation id
+  useEffect(() => {
+    if (conversationId) return; // handled by effect 1
+    if (loading) return; // wait until conversations list loaded
+
+    const wantNew =
+      location.state?.startNew === true && !startNewConsumedRef.current;
+
+    // Explicit new conversation request
+    if (wantNew && !creationRef.current) {
+      creationRef.current = true;
+      (async () => {
+        try {
+          const resp = await API.createConversation();
+          const c = resp.data.data;
+          addNewConversation({ id: c.id, title: c.title, messages: [] });
+          startNewConsumedRef.current = true;
+          navigate(`/chat/${c.id}`, { replace: true, state: {} }); // clear state
+        } catch (e) {
+          console.error('Failed to create new conversation', e);
+          creationRef.current = false; // allow retry
+        }
+      })();
+      return;
+    }
+
+    // If we have existing conversations, go to first
+    if (conversations.length > 0) {
+      navigate(`/chat/${conversations[0].id}`, { replace: true, state: {} });
+      return;
+    }
+
+    // No conversations at all: create initial one (only once)
+    if (!creationRef.current) {
+      creationRef.current = true;
+      (async () => {
+        try {
+          const resp = await API.createConversation();
+          const c = resp.data.data;
+          addNewConversation({ id: c.id, title: c.title, messages: [] });
+          navigate(`/chat/${c.id}`, { replace: true, state: {} });
+        } catch (e) {
+          console.error('Failed to create initial conversation', e);
+          creationRef.current = false; // allow retry
+        }
+      })();
+    }
+  }, [
+    conversationId,
+    loading,
+    conversations.length,
+    navigate,
+    addNewConversation,
+    location.state,
+  ]);
 
   // Update messages when current conversation changes
   useEffect(() => {

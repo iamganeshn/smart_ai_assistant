@@ -8,7 +8,7 @@ export const useConversations = () => {
 
   const fetchConversations = useCallback(async () => {
     try {
-      setLoading(true);
+      if (conversations.length === 0) setLoading(true); // only show loader on first load
       const response = await getConversations();
       setConversations(response.data.data || []);
     } catch (error) {
@@ -16,7 +16,7 @@ export const useConversations = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [conversations.length]);
 
   const fetchConversation = useCallback(async (id) => {
     if (!id) {
@@ -25,14 +25,11 @@ export const useConversations = () => {
     }
 
     try {
-      setLoading(true);
       const response = await getConversation(id);
       setCurrentConversation(response.data.data);
     } catch (error) {
       console.error('Failed to fetch conversation:', error);
       setCurrentConversation(null);
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -57,12 +54,15 @@ export const useConversations = () => {
     [currentConversation?.id]
   );
 
-  const removeConversation = useCallback((id) => {
-    setConversations((prev) => prev.filter((c) => c.id !== id));
-    if (currentConversation?.id === id) {
-      setCurrentConversation(null);
-    }
-  }, [currentConversation?.id]);
+  const removeConversation = useCallback(
+    (id) => {
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (currentConversation?.id === id) {
+        setCurrentConversation(null);
+      }
+    },
+    [currentConversation?.id]
+  );
 
   useEffect(() => {
     fetchConversations();
@@ -77,6 +77,6 @@ export const useConversations = () => {
     clearCurrentConversation,
     addNewConversation,
     updateConversationTitle,
-  removeConversation,
+    removeConversation,
   };
 };

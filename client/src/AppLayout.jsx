@@ -64,7 +64,7 @@ export default function AppLayout({ children }) {
   const conversationId = location.pathname.match(/\/chat\/(.+)/)?.[1];
 
   const handleNewConversation = () => {
-    navigate('/chat');
+    navigate('/chat', { state: { startNew: true } });
   };
 
   const handleConversationClick = (id) => {
@@ -231,7 +231,7 @@ export default function AppLayout({ children }) {
           <Divider />
 
           {/* Conversations List */}
-          {loading ? (
+          {loading && conversations.length === 0 ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
               <CircularProgress size={24} />
             </Box>
