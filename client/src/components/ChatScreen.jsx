@@ -42,7 +42,7 @@ const AnimatedDots = () => {
   return <span>{'.'.repeat(count)}</span>;
 };
 
-const ChatScreen = (props) => {
+const ChatScreen = () => {
   const { user } = useAuth();
   const { conversationId } = useParams();
   const location = useLocation();
