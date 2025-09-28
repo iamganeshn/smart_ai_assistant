@@ -317,13 +317,19 @@ const ChatScreen = (props) => {
       {/* Messages */}
       <Box
         sx={{
-          flexGrow: 1,
-          overflowY: 'auto',
-          px: 2,
-          py: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1.5,
+          'flexGrow': 1,
+          'overflowY': 'auto',
+          'px': 2,
+          'py': 1,
+          'display': 'flex',
+          'flexDirection': 'column',
+          'gap': 1.5,
+          // Hide scrollbar (still scrollable)
+          'msOverflowStyle': 'none', // IE/Edge
+          'scrollbarWidth': 'none', // Firefox
+          '&::-webkit-scrollbar': {
+            display: 'none', // Chrome/Safari
+          },
         }}
       >
         {messages.map((message) => {
@@ -354,7 +360,14 @@ const ChatScreen = (props) => {
                   alignSelf: isUser ? 'flex-end' : 'flex-start',
                 }}
               >
-                <CardContent sx={{ p: 2 }}>
+                <CardContent
+                  sx={{
+                    'px': 2,
+                    'py': isAssistant ? 0 : 2,
+                    // MUI applies extra bottom padding to last-child; override it
+                    '&:last-child': { pb: isAssistant ? 0 : 2 },
+                  }}
+                >
                   {isAssistant ? (
                     <Box
                       sx={{
