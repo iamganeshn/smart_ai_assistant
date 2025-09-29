@@ -1,8 +1,10 @@
-<img width="140" align="right" src="https://api.iconify.design/solar:brain-line-duotone.svg" />
+# <img src="https://github.com/user-attachments/assets/5e5ab477-5623-43bb-a39e-539074fbc60a" alt="tech9gpt-icon" width="35" height="35" style="vertical-align: botton;" /> Smart AI Assistant
 
-# Smart AI Assistant
+Smart AI Assistant transforms internal documents into a conversational knowledge base. Employees can simply ask questions and get instant, accurate answers—powered by automatic text extraction, chunking, and vector search.
 
-Retrieval-Augmented Generation (RAG) chat + document knowledge base platform. Upload documents, they are chunked, embedded, and become available for contextual chat via streaming SSE responses. Built with **Rails 8 (Ruby 3.3.8)** backend and a **React 19 + Vite + MUI** frontend.
+It supports multiple conversations, with global documents managed by admins and personal conversation documents, ensuring both shared and private context.
+
+Built on a modern stack (Rails + pgvector + Solid Queue) with Google SSO and Slack integration, it’s secure, scalable, and easy to extend.
 
 ---
 
@@ -244,7 +246,6 @@ curl -X POST http://localhost:3000/slack/events \
 - Search + filter + sort on documents table
 - Live push (Action Cable / SSE) for document status instead of polling
 - Auth hardening + per-user doc scoping
-- Domain allow-list enforcement for Slack (currently placeholder logic inverted)
 - Slack thread replies & conversation persistence mapping
 
 ---

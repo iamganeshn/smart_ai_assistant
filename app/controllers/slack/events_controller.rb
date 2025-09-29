@@ -24,7 +24,7 @@ class Slack::EventsController < ApplicationController
     profile = fetch_user_profile(user_id)
     Rails.logger.info("User profile: #{profile.inspect}")
     # Todo: Update Restricting to only tech9.com users for now after testing
-    unless profile&.email&.end_with?("@tech9.com")
+    if profile&.email&.end_with?("@tech9.com")
       response_text = SlackChatService.new(event["text"]).call
       send_message(channel_id, response_text)
     else
