@@ -95,7 +95,7 @@ class ChatCompletionService
     when "response.output_text.delta"
       delta_text = chunk["delta"]
       @assistant_response += delta_text if delta_text
-      stream_writer.call({ type: "delta", content: delta_text }) if stream_writer && delta_text.present?
+      stream_writer.call({ type: "delta", content: delta_text }) if stream_writer && delta_text
 
     when "response.completed"
       Rails.logger.info("Response usage: #{chunk.dig('response', 'usage')}")
