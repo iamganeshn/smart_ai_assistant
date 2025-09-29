@@ -1,10 +1,64 @@
-<img width="140" align="right" src="https://api.iconify.design/solar:brain-line-duotone.svg" />
+# <img src="https://github.com/user-attachments/assets/5e5ab477-5623-43bb-a39e-539074fbc60a" alt="tech9gpt-icon" width="35" height="35" style="vertical-align: botton;" /> Smart AI Assistant
 
-# Smart AI Assistant
+Smart AI Assistant transforms internal documents into a conversational knowledge base. Employees can simply ask questions and get instant, accurate answers—powered by automatic text extraction, chunking, and vector search.
 
-Retrieval-Augmented Generation (RAG) chat + document knowledge base platform. Upload documents, they are chunked, embedded, and become available for contextual chat via streaming SSE responses. Built with **Rails 8 (Ruby 3.3.8)** backend and a **React 19 + Vite + MUI** frontend.
+It supports multiple conversations, with global documents managed by admins and personal conversation documents, ensuring both shared and private context.
+
+Built on a modern stack (Rails + pgvector + Solid Queue) with Google SSO and Slack integration, it’s secure, scalable, and easy to extend.
 
 ---
+
+## 📸 Screenshots
+
+### Conversation Screen
+
+If no documents are uploaded in a conversation, answers will be sourced from Tech9's shared document knowledge base.
+
+<table>
+  <tr>
+    <td><img height="400" src="https://github.com/user-attachments/assets/6e2bfe88-4832-45b2-8e82-bda788fedefb" /></td>
+    <td><img height="400" src="https://github.com/user-attachments/assets/33de43f7-934f-40f7-aaa0-def4ad8b0d7e" /></td>
+  </tr>
+  <tr>
+    <td align="center"> Uploading Document (Private Knowledge)</td>
+    <td align="center"> Answers from Private Documents</td>
+  </tr>
+</table>
+
+### Documents Screen (Shared, Admin Access)
+
+<table>
+  <tr>
+    <td><img height="475" alt="Screenshot 2025-09-29 at 11 05 46 AM" src="https://github.com/user-attachments/assets/85e06f77-253e-4c0a-9e6d-550ad5945c82" /></td>
+  </tr>
+  <tr>
+    <td align="center"> Upload, Replace, and Delete Files </td>
+  </tr>
+</table>
+
+### Login Screen
+
+<table>
+  <tr>
+    <td><img height="475" alt="Screenshot 2025-09-29 at 10 56 23 AM" src="https://github.com/user-attachments/assets/11ca2edd-de00-4777-9e8d-a68529ebfdc1" /></td>
+    <td><img height="475" alt="Screenshot 2025-09-29 at 10 58 02 AM" src="https://github.com/user-attachments/assets/469cce2d-6ac6-4319-a017-dfff62acc4f3" /></td>
+  </tr>
+  <tr>
+    <td align="center"> Login Screen </td>
+    <td align="center"> Restricting Login to tech9.com Emails </td>
+  </tr>
+</table>
+
+### Slack Integration
+
+<table>
+  <tr>
+    <td><img height="475" alt="Screenshot 2025-09-29 at 10 48 26 AM" src="https://github.com/user-attachments/assets/e1f8ea0d-c316-4c7b-8097-d8232e7c4ea6" /></td>
+  </tr>
+  <tr>
+    <td align="center"> Interact with Tech9GPT Slack Bot (Shared Knowledge Base) </td>
+  </tr>
+</table>
 
 ## ✨ Core Features
 
@@ -244,7 +298,6 @@ curl -X POST http://localhost:3000/slack/events \
 - Search + filter + sort on documents table
 - Live push (Action Cable / SSE) for document status instead of polling
 - Auth hardening + per-user doc scoping
-- Domain allow-list enforcement for Slack (currently placeholder logic inverted)
 - Slack thread replies & conversation persistence mapping
 
 ---

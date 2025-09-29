@@ -8,6 +8,8 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
+import icon from '../assets/tech9gpt-icon.png';
+
 const StyledCard = styled(Card)(({ theme }) => ({
   width: '100%',
   minWidth: '600px',
@@ -20,16 +22,11 @@ export function LoginScreen({ onLogin }) {
     <Container maxWidth="md">
       <StyledCard>
         <CardContent sx={{ textAlign: 'center', p: 4 }}>
-          <svg width="32" height="32" fill="white" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              stroke="currentColor"
-              fill="none"
-            />
-          </svg>
+          <img
+            src={icon}
+            alt="Tech9 GPT Logo"
+            style={{ width: 80, height: 80, marginBottom: 16 }}
+          />
 
           <Typography variant="h4" component="h1" gutterBottom sx={{ mb: 1 }}>
             Tech9 GPT
