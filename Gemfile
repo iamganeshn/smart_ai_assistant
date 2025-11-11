@@ -38,7 +38,7 @@ gem "pgvector", "~> 0.3.0"
 gem "ruby-openai", "~> 8.3.0"
 
 # Token-aware text splitter (for chunking documents)
-gem "tiktoken_ruby", "~> 0.0.12"
+gem "tiktoken_ruby", "~> 0.0.13"
 
 gem "neighbor", "~> 0.6.0"
 
