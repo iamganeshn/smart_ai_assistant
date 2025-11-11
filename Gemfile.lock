@@ -319,9 +319,6 @@ GEM
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.3.0)
-    rake-compiler-dock (1.9.1)
-    rb_sys (0.9.117)
-      rake-compiler-dock (= 1.9.1)
     rdoc (6.14.2)
       erb
       psych (>= 4.0.0)
@@ -407,13 +404,12 @@ GEM
     thruster (0.1.15-arm64-darwin)
     thruster (0.1.15-x86_64-darwin)
     thruster (0.1.15-x86_64-linux)
-    tiktoken_ruby (0.0.12)
-      rb_sys (~> 0.9)
-    tiktoken_ruby (0.0.12-aarch64-linux)
-    tiktoken_ruby (0.0.12-arm64-darwin)
-    tiktoken_ruby (0.0.12-x86_64-darwin)
-    tiktoken_ruby (0.0.12-x86_64-linux)
-    tiktoken_ruby (0.0.12-x86_64-linux-musl)
+    tiktoken_ruby (0.0.13-aarch64-linux)
+    tiktoken_ruby (0.0.13-arm-linux)
+    tiktoken_ruby (0.0.13-arm64-darwin)
+    tiktoken_ruby (0.0.13-x86_64-darwin)
+    tiktoken_ruby (0.0.13-x86_64-linux)
+    tiktoken_ruby (0.0.13-x86_64-linux-musl)
     timeout (0.4.3)
     ttfunk (1.8.0)
       bigdecimal (~> 3.1)
@@ -472,7 +468,7 @@ DEPENDENCIES
   solid_cache
   solid_queue
   thruster
-  tiktoken_ruby (~> 0.0.12)
+  tiktoken_ruby (~> 0.0.13)
   tzinfo-data
 
 RUBY VERSION
